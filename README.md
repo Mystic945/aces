@@ -1,6 +1,6 @@
-# LendMatch — P2P Micro-Lending Matchmaker
+# P2P Micro-Lending Matchmaker
 
-Set a risk appetite and an investment amount; LendMatch instantly ranks the
+Set a risk appetite and an investment amount; the app instantly ranks the
 open borrower listings from best to worst fit, recommends the top five to fund,
 splits your money across them, and explains every pick.
 
@@ -23,25 +23,21 @@ fitScore    = w * normalized(expectedROI) + (1 - w) * safety
 | **Allocation** | The top 5 share the amount 5 : 4 : 3 : 2 : 1, capped at 40% per borrower and at what each listing still needs. Slices under ₹25 are dropped, so small amounts concentrate and large ones spread out. |
 | **ROI in rupees** | `allocation × expectedROI`, per year. |
 
-`fitScore` is shown in the app as the suitability score, out of 100.
+`fitScore` is shown in the app as the match score, out of 100.
 
-The page follows the matchmaker's flow from top to bottom:
+The app is three short pages that share the investor's two answers:
 
-1. Set risk appetite (Low / Medium / High, with a slider to fine-tune)
-2. Enter investment amount
-3. Fetch open borrower listings
-4. Evaluate each borrower four ways: repayment likelihood, loan risk, expected
-   return, investment fit
-5. Calculate a suitability score
-6. Rank borrowers, best fit to lowest fit
-7. Select the top 5 recommendations
-8. Show the results: borrower details, estimated ROI, risk level, and why the
-   borrower matches
+| Page | Address | What it shows |
+|---|---|---|
+| Matches | `#/` | The two questions (risk and amount) and the five best borrowers: how much to lend each, what it could earn a year, and the risk. Tap a borrower to see why they were picked. |
+| All borrowers | `#/borrowers` | Every open borrower ranked from best match to worst, with the ones left out and why, and a risk-against-earnings chart. |
+| The maths | `#/calculations` | The four steps in plain words (look at every borrower, leave out the ones that do not fit, score, rank) with live numbers, and the full sums for each of the five so a lender can redo them by hand. |
+| New lender | `#/start` | A new lender enters their details; their answers set the starting risk level and amount, then they see their five. |
+| Apply for a loan | `#/apply` | A new borrower enters their CIBIL score and details; they are assessed, saved, and appear in the rankings marked "New". |
 
-Every change to either input reruns steps 3 to 8 instantly. Each result says
-why it ranks above the next borrower down, and has a "Check the calculation
-yourself" section that writes out the sums with that listing's own figures, so
-a lender can redo them by hand.
+Every change to either answer reruns the whole thing instantly on all three
+pages. The main page uses plain words throughout ("96 in 100 chance they
+repay"); the finance terms and formulas live on the maths page.
 
 High rates do not win on their own: in the dataset every grade E loan has a
 negative expected ROI, so even a high risk appetite passes them over.
@@ -60,13 +56,13 @@ backend/                   Node.js + Express API on MongoDB Atlas
   data/borrower_listings.csv   the same data as CSV
 frontend/                  React + Vite + Tailwind CSS
   src/lib/scoring.js         expected ROI, fit score, ranking, allocation
-  src/lib/explain.js         the reasons and the worked sums on each result
+  src/lib/explain.js         the plain-language reasons and the worked sums
   src/lib/normalizeListing.js  maps API columns to the shape the UI uses
   src/lib/scoring.test.js    checks that rankings change sensibly
-  src/components/Inputs.jsx  steps 1 and 2: risk appetite and amount
-  src/components/Engine.jsx  steps 3 to 6: fetch, evaluate, score, rank
-  src/components/TopFive.jsx steps 7 and 8: the five picks and their details
-  src/components/            also the scatter chart and the full ranking table
+  src/pages/Matches.jsx      the two questions and the five best borrowers
+  src/pages/Borrowers.jsx    the full ranking and the chart
+  src/pages/Calculations.jsx how it is calculated, with the sums
+  src/components/            inputs, the list of five, ranking table, chart
 ```
 
 ## API
@@ -109,6 +105,21 @@ dataset's own column names. Rates and probabilities are percentages.
 
 `source` is `mongodb` when the listings came from Atlas and `file` when they
 came from the dataset file.
+
+`POST /api/listings` takes a new borrower's application (name, PAN, CIBIL
+score, income, existing repayments, years in work, past defaults, business,
+category, purpose, loan amount, term). The rules in
+[`backend/src/assess.js`](backend/src/assess.js) work out the credit grade,
+interest rate and chance of default from the CIBIL score and the other answers,
+and the borrower is saved as a new open listing that lenders see straight away.
+
+`POST /api/lenders` takes a new lender's details (name, PAN, CIBIL score,
+income, amount, how they feel about a borrower not repaying) and returns a
+starting risk level and amount, with the reasons.
+
+Both check the PAN's format only and keep its last four characters; the full
+number is never stored or returned. There is no login, so these endpoints are
+for demonstration.
 
 `GET /api/health` reports whether the database is wired up:
 

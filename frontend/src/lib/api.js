@@ -1,3 +1,4 @@
+import { assessBorrower, profileLender, validateBorrower, validateLender } from '@assess';
 import { isOpen, normalizeListing } from './normalizeListing.js';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
@@ -42,4 +43,63 @@ export async function fetchListings() {
   }
   const { default: rows } = await import('@dataset');
   return { source: 'bundled', listings: toListings(rows) };
+}
+
+/** Thrown when the API sends a form back; `fields` maps field to message. */
+export class FormError extends Error {
+  constructor(message, fields) {
+    super(message);
+    this.fields = fields ?? {};
+  }
+}
+
+async function post(path, data) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(data),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (response.status === 400) throw new FormError(body.error, body.fields);
+  if (!response.ok) throw new Error(body.error ?? `API responded ${response.status}`);
+  return body;
+}
+
+/**
+ * Sends a loan application. With an API it is saved and assessed there;
+ * without one the same rules run in the browser and the listing lasts for
+ * this visit only. Returns `{ listing, saved }`, `saved` being "mongodb",
+ * "memory" or "session".
+ */
+export async function submitBorrower(application) {
+  if (USE_API) {
+    try {
+      const { listing, saved } = await post('/api/listings', application);
+      return { listing: normalizeListing(listing), saved };
+    } catch (error) {
+      if (error instanceof FormError) throw error;
+      console.warn('Could not reach the API, assessing in the browser:', error.message);
+    }
+  }
+  const { ok, errors, value } = validateBorrower(application);
+  if (!ok) throw new FormError('Some answers need another look.', errors);
+  const listing = assessBorrower(value, `LN-${Date.now().toString().slice(-6)}`);
+  return { listing: normalizeListing(listing), saved: 'session' };
+}
+
+/** Sends a new lender's details and gets back their starting settings. */
+export async function submitLender(details) {
+  if (USE_API) {
+    try {
+      const { profile } = await post('/api/lenders', details);
+      return profile;
+    } catch (error) {
+      if (error instanceof FormError) throw error;
+      console.warn('Could not reach the API, working it out in the browser:', error.message);
+    }
+  }
+  const { ok, errors, value } = validateLender(details);
+  if (!ok) throw new FormError('Some answers need another look.', errors);
+  return profileLender(value);
 }

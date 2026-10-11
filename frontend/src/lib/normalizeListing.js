@@ -33,5 +33,7 @@ export function normalizeListing(raw) {
     employmentYears: raw.employment_history_years,
     monthlyIncome: raw.monthly_income,
     debtToIncome: raw.debt_to_income_ratio,
+    // Added through the application form rather than the sample dataset.
+    isNew: raw.is_new === true,
   };
 }

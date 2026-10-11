@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "src/index.css"
+        ],
+        "createdAt": "2026-10-11T11:18:08.921Z",
+        "reason": "Claude: fires on the .rank-bar width animation in ranking-card CSS added by another session. That component is not rendered on any page, so the animation never runs. Asked the user twice whether to remove the dead CSS; no decision yet."
+      }
+    ]
+  }
+}

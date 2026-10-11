@@ -35,7 +35,10 @@ const PUBLIC_DNS = ['8.8.8.8', '1.1.1.1'];
 // home, mobile and campus networks have a resolver that never answers SRV
 // queries, and the driver then hangs for most of a minute before failing
 // with "querySrv ETIMEOUT". Check once, quickly, and if the system resolver
-// cannot do it, point Node's DNS lookups at public resolvers instead.
+// cannot do it, point Node's DNS lookups at public resolvers instead. This is
+// normal on such networks, so it is noted on the start-up line, not warned.
+let publicDnsInUse = false;
+
 async function ensureSrvLookupWorks() {
   const host = uri.match(/^mongodb\+srv:\/\/(?:[^@/]*@)?([^/?]+)/)?.[1];
   if (!host) return;
@@ -44,12 +47,13 @@ async function ensureSrvLookupWorks() {
   try {
     await resolver.resolveSrv(`_mongodb._tcp.${host}`);
   } catch {
-    console.warn(
-      `This network's DNS did not answer the SRV lookup for the cluster; using ${PUBLIC_DNS.join(' and ')} instead.`,
-    );
     dns.setServers(PUBLIC_DNS);
+    publicDnsInUse = true;
   }
 }
+
+/** True when the cluster had to be looked up through public DNS. */
+export const usesPublicDns = () => publicDnsInUse;
 
 // One client for the whole process, kept outside any request handler so a
 // warm serverless instance reuses its connections instead of reconnecting on
@@ -76,10 +80,12 @@ function connect() {
 // not wait for the connection. A failure here is retried by that request.
 if (uri) connect().catch(() => {});
 
-export async function listingsCollection() {
+export async function collection(name) {
   const client = await connect();
-  return client.db(DB_NAME).collection(LISTINGS_COLLECTION);
+  return client.db(DB_NAME).collection(name);
 }
+
+export const listingsCollection = () => collection(LISTINGS_COLLECTION);
 
 /** For scripts that should exit when done; the API never closes its client. */
 export async function closeDatabase() {

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { fetchListings } from '../lib/api.js';
 
 /**
  * Loads the listings once. `source` is "api" or "bundled"; `origin` is what
- * the API says it read them from ("mongodb" or "file").
+ * the API says it read them from ("mongodb" or "file"). `addListing` puts a
+ * borrower who has just applied into the list without a reload.
  */
 export function useListings() {
   const [state, setState] = useState({
@@ -23,5 +24,12 @@ export function useListings() {
     };
   }, []);
 
-  return state;
+  const addListing = useCallback((listing) => {
+    setState((current) => ({
+      ...current,
+      listings: [...current.listings.filter((l) => l.id !== listing.id), listing],
+    }));
+  }, []);
+
+  return { ...state, addListing };
 }

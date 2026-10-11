@@ -8,7 +8,7 @@ function Figure({ label, children }) {
   return (
     <span className="block">
       <span className="label block text-muted">{label}</span>
-      <span className="block text-[15px] leading-tight font-extrabold text-ink sm:text-base">
+      <span className="block text-[15px] leading-tight font-extrabold whitespace-nowrap text-ink sm:text-base">
         {children}
       </span>
     </span>
@@ -55,10 +55,15 @@ function PickRow({ pick, next, result, amount, open, onToggle, flipRef }) {
                 Best match
               </span>
             )}
+            {pick.isNew && (
+              <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-extrabold text-ink">
+                New
+              </span>
+            )}
           </span>
           <span className="block truncate text-sm text-muted">{pick.sector ?? pick.borrower}</span>
         </span>
-        <span className="grid w-full grid-cols-3 gap-x-4 pl-14 sm:w-auto sm:min-w-[19rem] sm:pl-0">
+        <span className="flex w-full gap-x-6 pl-14 sm:grid sm:w-auto sm:grid-cols-[5.5rem_8rem_4.5rem] sm:gap-x-4 sm:pl-0">
           <Figure label="Lend">{funded ? money(pick.allocation) : 'Not this time'}</Figure>
           <Figure label="Could earn">
             {funded ? `${money(pick.expectedReturn)} a year` : '-'}

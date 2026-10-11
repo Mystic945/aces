@@ -46,6 +46,11 @@ function Row({ listing }) {
           className={`block text-sm leading-snug ${top ? 'font-extrabold text-ink' : 'font-semibold'}`}
         >
           {listing.purpose}
+          {listing.isNew && (
+            <span className="ml-2 rounded-full bg-gold px-2 py-0.5 text-[11px] font-extrabold text-ink">
+              New
+            </span>
+          )}
         </span>
         <span className="block text-xs text-muted">{listing.sector ?? listing.borrower}</span>
       </th>
