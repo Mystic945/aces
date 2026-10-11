@@ -40,8 +40,8 @@ export default function Matches({ inputs, result, amount, welcome, onDismissWelc
             Set up as a lender
           </a>{' '}
           or{' '}
-          <a href="#/apply" className="font-bold text-primary-strong underline-offset-4 hover:underline">
-            apply for a loan
+          <a href="#/profile" className="font-bold text-primary-strong underline-offset-4 hover:underline">
+            create a borrower profile
           </a>
           .
         </p>

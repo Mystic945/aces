@@ -7,8 +7,6 @@ import Apply from './pages/Apply.jsx';
 import Borrowers from './pages/Borrowers.jsx';
 import Calculations from './pages/Calculations.jsx';
 import Matches from './pages/Matches.jsx';
-import Discover from './pages/Discover.jsx';
-import Profile from './pages/Profile.jsx';
 import Start from './pages/Start.jsx';
 
 // The pages behind the login share one set of answers:
@@ -16,8 +14,7 @@ import Start from './pages/Start.jsx';
 //   #/borrowers     every borrower, ranked
 //   #/calculations  how it is worked out, with the sums
 //   #/start         a new lender's details set the two answers
-//   #/apply         a new borrower applies and joins the listings
-//   #/discover, #/profile
+//   #/profile       a new borrower's details; they join the listings
 export default function App() {
   const { status, listings, addListing } = useListings();
   const { path, params } = useHashRoute();
@@ -72,12 +69,8 @@ export default function App() {
     );
   } else if (path === '/start') {
     page = <Start onProfile={startFromProfile} />;
-  } else if (path === '/apply') {
+  } else if (path === '/profile' || path === '/apply') {
     page = <Apply result={result} amount={amount} onAdded={addListing} />;
-  } else if (path === '/discover') {
-    page = <Discover />;
-  } else if (path === '/profile') {
-    page = <Profile />;
   } else {
     page = (
       <Matches

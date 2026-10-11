@@ -138,7 +138,7 @@ export default function Apply({ result, amount, onAdded }) {
   return (
     <>
       <h1 className="max-w-[22ch] text-3xl leading-[1.1] font-extrabold tracking-tight text-ink sm:text-4xl">
-        Apply for a loan
+        Your profile
       </h1>
       <p className="mt-3 max-w-[60ch] text-base leading-relaxed text-body">
         Tell us about yourself and your business. We work out your risk level and interest rate
