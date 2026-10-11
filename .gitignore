@@ -1,0 +1,52 @@
+# ── Dependencies ────────────────────────────────────────────────
+node_modules/
+
+# ── Build output ────────────────────────────────────────────────
+dist/
+build/
+frontend/dist/
+backend/dist/
+*.tsbuildinfo
+
+# ── Environment files (frontend + backend) ──────────────────────
+# Real secrets never get committed; the *.example templates do.
+.env
+.env.*
+frontend/.env
+frontend/.env.*
+backend/.env
+backend/.env.*
+!.env.example
+!frontend/.env.example
+!backend/.env.example
+
+# ── Deployment ──────────────────────────────────────────────────
+.vercel/
+
+# ── Tooling scratch ─────────────────────────────────────────────
+.claude/launch.json
+.superdesign/tmp/
+.superdesign/website/
+.vite/
+.cache/
+coverage/
+
+# ── Logs ────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Editors / OS ────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Browser test artefacts ──────────────────────────────────────
+.playwright-mcp/

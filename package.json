@@ -1,0 +1,14 @@
+{
+  "name": "lendmatch",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Peer-to-peer micro-lending matchmaker",
+  "scripts": {
+    "install:all": "npm install --prefix frontend && npm install --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "build": "npm run build --prefix frontend",
+    "test": "npm test --prefix frontend"
+  }
+}
