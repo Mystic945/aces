@@ -6,6 +6,8 @@ import { RISK_LEVELS, matchListings, prepareListings, summarizePool } from './li
 import Borrowers from './pages/Borrowers.jsx';
 import Calculations from './pages/Calculations.jsx';
 import Matches from './pages/Matches.jsx';
+import Discover from './pages/Discover.jsx';
+import Profile from './pages/Profile.jsx';
 
 // Three pages share one set of answers:
 //   #/              the two questions and the five matches
@@ -53,9 +55,16 @@ export default function App() {
         selectedId={params.get('loan')}
       />
     );
+  } else if (path === '/discover') {
+    page = <Discover />;
+  } else if (path === '/profile') {
+    page = <Profile />;
+  } else if (path === '/borrowers') {
+    page = <Borrowers inputs={inputs} result={deferred} />;
   } else {
-    page = <Matches inputs={inputs} result={result} amount={amount} />;
+    page = <Matches inputs={inputs} result={deferred} amount={amount} />;
   }
+
 
   return (
     <div className="mx-auto w-full max-w-[1100px] px-4 pt-5 pb-32 sm:px-6 sm:pt-7 lg:px-8 lg:pb-16">
