@@ -1,6 +1,9 @@
 import { isOpen, normalizeListing } from './normalizeListing.js';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+// VITE_USE_API=false builds a frontend that never calls the API and runs on
+// the bundled dataset, for deploying the frontend on its own.
+const USE_API = import.meta.env.VITE_USE_API !== 'false';
 const TIMEOUT_MS = 4000;
 
 /** Accepts `{ listings: [...] }` or a bare array of listings. */
@@ -12,21 +15,28 @@ function toListings(body) {
   return rows.filter(isOpen).map(normalizeListing);
 }
 
+async function fetchFromApi() {
+  const response = await fetch(`${API_BASE}/api/listings`, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error(`API responded ${response.status}`);
+  return toListings(await response.json());
+}
+
 /**
- * GET /api/listings, once on page load. If the API cannot be reached, the
- * copy of the dataset bundled with the app is used so it still works.
+ * The open listings, loaded once on page load: from GET /api/listings, or
+ * from the copy of the dataset bundled with the app when the API is switched
+ * off or cannot be reached.
  */
 export async function fetchListings() {
-  try {
-    const response = await fetch(`${API_BASE}/api/listings`, {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    if (!response.ok) throw new Error(`API responded ${response.status}`);
-    return { source: 'api', listings: toListings(await response.json()) };
-  } catch (error) {
-    console.warn('Listings API unavailable, using bundled data:', error.message);
-    const { default: rows } = await import('@dataset');
-    return { source: 'bundled', listings: toListings(rows) };
+  if (USE_API) {
+    try {
+      return { source: 'api', listings: await fetchFromApi() };
+    } catch (error) {
+      console.warn('Listings API unavailable, using bundled data:', error.message);
+    }
   }
+  const { default: rows } = await import('@dataset');
+  return { source: 'bundled', listings: toListings(rows) };
 }

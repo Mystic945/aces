@@ -64,9 +64,9 @@ function AmountInput({ value, onChange }) {
 
   return (
     <label className="flex items-center rounded-xl border border-line bg-fill/60 transition-colors duration-150 focus-within:border-primary focus-within:bg-surface">
-      <span className="sr-only">Investment amount in dollars</span>
+      <span className="sr-only">Investment amount in rupees</span>
       <span className="pl-3 text-sm font-semibold text-muted" aria-hidden="true">
-        $
+        ₹
       </span>
       <input
         type="text"

@@ -1,10 +1,11 @@
-const usd = new Intl.NumberFormat('en-US', {
+// Indian rupees with Indian digit grouping (1,00,000).
+const inr = new Intl.NumberFormat('en-IN', {
   style: 'currency',
-  currency: 'USD',
+  currency: 'INR',
   maximumFractionDigits: 0,
 });
 
-export const money = (value) => usd.format(Math.round(value));
+export const money = (value) => inr.format(Math.round(value));
 
 export const percent = (value, digits = 1) =>
   `${(value * 100).toFixed(digits)}%`;

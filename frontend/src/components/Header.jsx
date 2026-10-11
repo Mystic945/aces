@@ -32,7 +32,7 @@ export default function Header({ status, source, count }) {
         className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-2"
         title={
           source === 'bundled'
-            ? 'The listings API could not be reached, so the copy of the dataset bundled with the app is in use.'
+            ? 'Running on the copy of the dataset bundled with the app.'
             : 'Listings were loaded from GET /api/listings.'
         }
       >

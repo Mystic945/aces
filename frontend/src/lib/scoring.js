@@ -12,7 +12,7 @@ export const TOP_N = 5;
 export const MAX_SHARE = 0.4;
 /** Smallest amount the platform lets you lend to one borrower. */
 export const MIN_TICKET = 25;
-/** Allocations are rounded to this many dollars. */
+/** Allocations are rounded to this many rupees. */
 export const ALLOCATION_STEP = 5;
 
 export const AMOUNT_MIN = 100;
@@ -37,7 +37,7 @@ export function riskProfile(riskAppetite) {
 }
 
 /**
- * Expected annual return per dollar lent: the interest you collect when the
+ * Expected annual return per rupee lent: the interest you collect when the
  * borrower repays, minus the principal you lose when they do not.
  */
 export function expectedROI(rate, pd, lgd = LGD) {

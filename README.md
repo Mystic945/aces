@@ -19,9 +19,9 @@ fitScore    = w * normalized(expectedROI) + (1 - w) * safety
 | Rule | What it does |
 |---|---|
 | **Risk cap** | Appetite 0–24 sees grades A–B, 25–49 A–C, 50–74 A–D, 75–100 all grades. |
-| **Funding room** | A listing needs at least a fifth of your amount (min $25) still unfunded. |
-| **Allocation** | The top 5 share the amount 5 : 4 : 3 : 2 : 1, capped at 40% per borrower and at what each listing still needs. Slices under $25 are dropped, so small amounts concentrate and large ones spread out. |
-| **ROI in dollars** | `allocation × expectedROI`, per year. |
+| **Funding room** | A listing needs at least a fifth of your amount (min ₹25) still unfunded. |
+| **Allocation** | The top 5 share the amount 5 : 4 : 3 : 2 : 1, capped at 40% per borrower and at what each listing still needs. Slices under ₹25 are dropped, so small amounts concentrate and large ones spread out. |
+| **ROI in rupees** | `allocation × expectedROI`, per year. |
 
 Each recommendation shows its rate, default risk, expected ROI, the safety and
 return contributions to its fit score, and one sentence on why it ranked there.
@@ -92,8 +92,9 @@ The frontend reads `loan_id`, `borrower_name`, `business_title`, `category`,
 `{ "listings": [...] }` or a bare array, so a backend that returns database
 documents with these fields works without frontend changes.
 
-If the API cannot be reached, the frontend uses the copy of the dataset bundled
-with the app, and the pill in the header says which source is in use.
+If the API cannot be reached, or the frontend was built with
+`VITE_USE_API=false`, it uses the copy of the dataset bundled with the app. The
+pill in the header says which source is in use.
 
 ### Moving to a database
 
@@ -140,12 +141,18 @@ Copy `frontend/.env.example` to `frontend/.env` and `backend/.env.example` to
 
 ## Deploy
 
-The repository deploys to Vercel as one project with two
-[services](https://vercel.com/docs/services), defined in
-[`vercel.json`](vercel.json): the Express app in `backend/` answers `/api/*`
-and the Vite build in `frontend/` answers everything else. Import the
-repository with the repository root as the Root Directory; no build settings
-need changing.
+**Frontend and backend together.** With the repository root as the Root
+Directory, [`vercel.json`](vercel.json) deploys one Vercel project with two
+[services](https://vercel.com/docs/services): the Express app in `backend/`
+answers `/api/*` and the Vite build in `frontend/` answers everything else.
+
+**Frontend on its own.** Create a second Vercel project from the same
+repository with `frontend` as its Root Directory (keep "Include files outside
+the Root Directory" enabled, since the build reads the dataset from
+`backend/data/`). Set the environment variable `VITE_USE_API=false` so the
+site runs on the dataset bundled with it and makes no API calls. Without that
+variable it still works: it tries the API, finds none, and uses the bundled
+dataset.
 
 ## Design
 
