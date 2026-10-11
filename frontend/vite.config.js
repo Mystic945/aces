@@ -11,11 +11,10 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url)),
-        // The dataset lives with the API; the frontend bundles a copy as an
-        // offline fallback.
         // The rules for new borrowers and lenders, shared with the API.
         '@assess': fileURLToPath(new URL('../backend/src/assess.js', import.meta.url)),
+        // The dataset lives with the API; the frontend bundles a copy as an
+        // offline fallback.
         '@dataset': fileURLToPath(
           new URL('../backend/data/borrower_listings.json', import.meta.url),
         ),

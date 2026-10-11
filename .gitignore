@@ -24,11 +24,11 @@ backend/.env.*
 .vercel/
 
 # ── Tooling scratch ─────────────────────────────────────────────
-.claude/launch.json
-.superdesign/tmp/
-.superdesign/website/
-.superdesign/init/
-.superdesign/resume.json
+.claude/
+.superdesign/
+.impeccable/
+__pycache__/
+*.pyc
 .vite/
 .cache/
 coverage/

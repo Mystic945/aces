@@ -25,19 +25,26 @@ fitScore    = w * normalized(expectedROI) + (1 - w) * safety
 
 `fitScore` is shown in the app as the match score, out of 100.
 
-The app is three short pages that share the investor's two answers:
+## The flow
+
+![From the investor's two inputs to the five recommendations](docs/flowchart.png)
+
+## Pages
+
+The site opens on a sign-in screen (`#/login`); the pages behind it share the
+investor's two answers:
 
 | Page | Address | What it shows |
 |---|---|---|
-| Matches | `#/` | The two questions (risk and amount) and the five best borrowers: how much to lend each, what it could earn a year, and the risk. Tap a borrower to see why they were picked. |
-| All borrowers | `#/borrowers` | Every open borrower ranked from best match to worst, with the ones left out and why, and a risk-against-earnings chart. |
+| Dashboard | `#/` | The two questions (risk and amount) and the five best borrowers: how much to lend each, what it could earn a year, and the risk. Tap a borrower to see why they were picked. |
+| Rankings | `#/borrowers` | Every open borrower ranked from best match to worst, with the ones left out and why, and a risk-against-earnings chart. |
 | The maths | `#/calculations` | The four steps in plain words (look at every borrower, leave out the ones that do not fit, score, rank) with live numbers, and the full sums for each of the five so a lender can redo them by hand. |
+| Profile | `#/profile` | A new borrower enters their CIBIL score and details; they are assessed, saved, and appear in the rankings marked "New". |
 | New lender | `#/start` | A new lender enters their details; their answers set the starting risk level and amount, then they see their five. |
-| Apply for a loan | `#/apply` | A new borrower enters their CIBIL score and details; they are assessed, saved, and appear in the rankings marked "New". |
 
-Every change to either answer reruns the whole thing instantly on all three
-pages. The main page uses plain words throughout ("96 in 100 chance they
-repay"); the finance terms and formulas live on the maths page.
+Every change to either answer reruns the whole thing instantly on every page.
+The dashboard uses plain words throughout ("96 in 100 chance they repay"); the
+finance terms and formulas live on the maths page.
 
 High rates do not win on their own: in the dataset every grade E loan has a
 negative expected ROI, so even a high risk appetite passes them over.
@@ -45,24 +52,35 @@ negative expected ROI, so even a high risk appetite passes them over.
 ## Project layout
 
 ```
+README.md
 vercel.json                two Vercel services: backend on /api/*, frontend on the rest
+package.json               shortcuts: install:all, dev:backend, dev:frontend, test
 generate_data.py           regenerates the dataset (fixed seed)
+docs/flowchart.png         the flow the app follows
 backend/                   Node.js + Express API on MongoDB Atlas
-  src/server.js              GET /api/listings, GET /api/health
-  src/db.js                  MongoDB connection, shared across requests
-  src/listingsStore.js       reads listings from Atlas, or the dataset file
-  scripts/seed.js            loads the dataset into Atlas
   data/borrower_listings.json  the dataset: 200 open borrower listings
   data/borrower_listings.csv   the same data as CSV
+  src/server.js              the routes: listings, lenders, health
+  src/assess.js              rules that grade a new borrower and profile a new lender
+  src/listingsStore.js       reads and saves listings in Atlas, or the dataset file
+  src/db.js                  MongoDB connection, shared across requests
+  scripts/seed.js            loads the dataset into Atlas
 frontend/                  React + Vite + Tailwind CSS
+  src/main.jsx               entry: sign-in screen, then the app
+  src/App.jsx                the two answers, the matching, and the routes
   src/lib/scoring.js         expected ROI, fit score, ranking, allocation
-  src/lib/explain.js         the plain-language reasons and the worked sums
-  src/lib/normalizeListing.js  maps API columns to the shape the UI uses
   src/lib/scoring.test.js    checks that rankings change sensibly
-  src/pages/Matches.jsx      the two questions and the five best borrowers
+  src/lib/explain.js         the plain-language reasons and the worked sums
+  src/lib/api.js             calls the API, falls back to the bundled dataset
+  src/lib/normalizeListing.js  maps API columns to the shape the UI uses
+  src/pages/Matches.jsx      dashboard: the two questions and the five best borrowers
   src/pages/Borrowers.jsx    the full ranking and the chart
   src/pages/Calculations.jsx how it is calculated, with the sums
-  src/components/            inputs, the list of five, ranking table, chart
+  src/pages/Apply.jsx        profile: a new borrower's application
+  src/pages/Start.jsx        a new lender's details
+  src/pages/LoginPage.jsx    the sign-in screen
+  src/components/            header, inputs, the list of five, ranking table, chart, form fields
+  src/hooks/                 listings loader, hash routing, list animation
 ```
 
 ## API
@@ -135,8 +153,7 @@ The frontend reads `loan_id`, `borrower_name`, `business_title`, `category`,
 documents with these fields works without frontend changes.
 
 If the API cannot be reached, or the frontend was built with
-`VITE_USE_API=false`, it uses the copy of the dataset bundled with the app. The
-pill in the header says which source is in use.
+`VITE_USE_API=false`, it uses the copy of the dataset bundled with the app.
 
 ## Database (MongoDB Atlas)
 
@@ -223,9 +240,19 @@ site runs on the dataset bundled with it and makes no API calls. Without that
 variable it still works: it tries the API, finds none, and uses the bundled
 dataset.
 
+**On Render.** Two services from the same repository:
+
+| Service | Root Directory | Build Command | Start / Publish |
+|---|---|---|---|
+| Static Site (frontend) | `frontend` | `npm install --include=dev && npm run build` | Publish Directory `dist` |
+| Web Service (backend) | `backend` | `npm install` | Start Command `npm start` |
+
+Give the backend the variables from `backend/.env.example`, and set
+`VITE_API_BASE_URL` on the frontend to the backend's URL.
+
 ## Design
 
 Layout and styling were drafted with Superdesign; the visual language (Manrope,
-blue primary, navy stat band, lime accent) takes the public LenDenClub site as
-its reference. The design system is in
-[`.superdesign/design-system.md`](.superdesign/design-system.md).
+blue primary, lime accent) takes the public LenDenClub site as its reference.
+The colour and type tokens are in
+[`frontend/src/index.css`](frontend/src/index.css).
