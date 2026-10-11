@@ -4,7 +4,6 @@ import { Field, PanNote, SubmitButton } from '../components/form.jsx';
 import { FormError, submitBorrower } from '../lib/api.js';
 import { inHundred } from '../lib/explain.js';
 import { money, ordinal, percent } from '../lib/format.js';
-import { borrowerRisk } from '../lib/scoring.js';
 
 const EMPTY = {
   name: '',
@@ -54,7 +53,7 @@ function Listed({ listing, saved, result, amount, onAgain }) {
       </p>
 
       <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4">
-        <Outcome label="Risk level">{borrowerRisk(listing.grade).label}</Outcome>
+        <Outcome label="Risk of not repaying">{percent(listing.pd)}</Outcome>
         <Outcome label="Interest you would pay">{percent(listing.rate)} a year</Outcome>
         <Outcome label="Chance you repay">{inHundred(1 - listing.pd)}</Outcome>
         <Outcome label="Monthly payment">{money(listing.monthlyPayment)}</Outcome>

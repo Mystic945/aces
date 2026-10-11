@@ -81,7 +81,10 @@ export default function Inputs({ riskAppetite, amount, level, onRisk, onAmount }
           How much risk are you comfortable with?
         </label>
         <output htmlFor="risk-appetite" className={answer}>
-          {level.label}
+          {riskAppetite}
+          <span className="ml-2 text-base font-bold tracking-normal text-muted">
+            out of 100 ({level.label.toLowerCase()})
+          </span>
         </output>
         <div className="mt-2">
           <RiskSlider id="risk-appetite" value={riskAppetite} onChange={onRisk} />
@@ -118,7 +121,7 @@ function CompactInputs({ prefix, riskAppetite, amount, level, onRisk, onAmount }
       <div>
         <label htmlFor={`${prefix}-risk`} className="label flex justify-between gap-2 text-muted">
           <span>Risk</span>
-          <span className="font-extrabold text-ink">{level.label}</span>
+          <span className="font-extrabold text-ink">{riskAppetite} / 100</span>
         </label>
         <RiskSlider id={`${prefix}-risk`} value={riskAppetite} onChange={onRisk} />
       </div>

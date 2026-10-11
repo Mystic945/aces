@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useFlip } from '../hooks/useFlip.js';
 import { allocationNote, compareWithNext, explainPick, inHundred } from '../lib/explain.js';
 import { money, percent } from '../lib/format.js';
-import { GRADES, TOP_N, borrowerRisk } from '../lib/scoring.js';
+import { GRADES, TOP_N } from '../lib/scoring.js';
 
 function Figure({ label, children }) {
   return (
@@ -68,7 +68,7 @@ function PickRow({ pick, next, result, amount, open, onToggle, flipRef }) {
           <Figure label="Could earn">
             {funded ? `${money(pick.expectedReturn)} a year` : '-'}
           </Figure>
-          <Figure label="Risk">{borrowerRisk(pick.grade).label}</Figure>
+          <Figure label="Risk">{percent(pick.pd)}</Figure>
         </span>
         <span className="hidden text-sm font-bold whitespace-nowrap text-primary-strong sm:block">
           {open ? 'Hide' : 'Why?'}

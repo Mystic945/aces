@@ -1,6 +1,5 @@
 import { memo, useState } from 'react';
 import { percent, points } from '../lib/format.js';
-import { borrowerRisk } from '../lib/scoring.js';
 import { FitBar } from './ui.jsx';
 
 const COLLAPSED_ROWS = 15;
@@ -54,7 +53,7 @@ function Row({ listing }) {
         </span>
         <span className="block text-xs text-muted">{listing.sector ?? listing.borrower}</span>
       </th>
-      <td className={`${cell} text-sm font-semibold`}>{borrowerRisk(listing.grade).label}</td>
+      <td className={number}>{percent(listing.pd)}</td>
       <td className={number}>{percent(listing.rate)}</td>
       <td className={number}>{percent(1 - listing.pd, 0)}</td>
       <td className={number}>{percent(listing.expectedROI)}</td>
@@ -96,7 +95,7 @@ function ListingsTable({ ranked }) {
                 Rank
               </th>
               <th scope="col" className={`${heading} min-w-[190px] text-left`}>Borrower</th>
-              <th scope="col" className={`${heading} text-left`}>Risk</th>
+              <th scope="col" className={`${heading} text-right`}>Risk of not repaying</th>
               <th scope="col" className={`${heading} text-right`}>Interest they pay</th>
               <th scope="col" className={`${heading} text-right`}>Chance they repay</th>
               <th scope="col" className={`${heading} text-right`}>Expected earnings a year</th>
