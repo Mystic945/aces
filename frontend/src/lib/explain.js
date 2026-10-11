@@ -1,92 +1,71 @@
 import { exactPoints, money, ordinal, percent } from './format.js';
 import { ALLOCATION_STEP, MAX_SHARE, MIN_TICKET } from './scoring.js';
 
-/**
- * One plain sentence saying why a borrower suits this investor, phrased for
- * the investor's risk appetite.
- */
+/** A chance said the way people say it: "96 in 100". */
+export const inHundred = (probability) => `${Math.round(probability * 100)} in 100`;
+
+/** One or two plain sentences on why a borrower suits this investor. */
 export function explainPick(pick, level, rankedCount) {
-  const place =
+  const lead =
     pick.rank === 1
-      ? `Your best match of ${rankedCount}`
-      : `Ranked ${ordinal(pick.rank)} of ${rankedCount}`;
+      ? `Your best match out of ${rankedCount}.`
+      : `Your ${ordinal(pick.rank)} best match out of ${rankedCount}.`;
+  const repay = inHundred(1 - pick.pd);
   const rate = percent(pick.rate);
-  const pd = percent(pick.pd);
-  const roi = percent(pick.expectedROI);
-  const only = pick.safetyPercentile >= 0.6 ? 'only a ' : 'a ';
 
   switch (level.key) {
     case 'low':
-      return `${place}: ${rate} interest with ${only}${pd} chance of default suits your low risk appetite.`;
+      return `${lead} There is a ${repay} chance they repay, which matters most when you want to play it safe. They pay ${rate} interest.`;
     case 'medium':
-      return `${place}: nets ${roi} a year once its ${pd} chance of default is priced in, a balanced fit for your medium risk appetite.`;
+      return `${lead} A good balance: a ${repay} chance they repay, and they pay ${rate} interest.`;
     default:
-      return `${place}: ${rate} interest still nets ${roi} a year after a ${pd} chance of default, the return your high risk appetite looks for.`;
+      return `${lead} They pay ${rate} interest and there is still a ${repay} chance they repay, so the extra earnings are worth the risk.`;
   }
 }
 
-/**
- * Why this borrower sits above the next one down: which of the two things
- * the score weighs (safety, expected return) put it ahead.
- */
-export function compareWithNext(pick, next, w) {
+/** Why this borrower sits above the next one down, in plain words. */
+export function compareWithNext(pick, next) {
   if (!next) return null;
 
-  const other = `${ordinal(next.rank)} place, ${next.purpose}`;
-  const risk = `${percent(pick.pd, 2)} against ${percent(next.pd, 2)}`;
-  const reward = `${percent(pick.expectedROI, 2)} against ${percent(next.expectedROI, 2)}`;
   const safer = pick.pd < next.pd;
   const earnsMore = pick.expectedROI > next.expectedROI;
-  const weights = `safety counts ${percent(1 - w, 0)} and return ${percent(w, 0)}`;
+  const repaying = `${percent(1 - pick.pd)} chance of repaying against ${percent(1 - next.pd)}`;
+  const earning = `${percent(pick.expectedROI)} a year against ${percent(next.expectedROI)}`;
 
   if (safer && earnsMore) {
-    return `It beats ${other}, on both counts: a lower chance of default (${risk}) and a higher expected return (${reward}).`;
+    return `It is ahead of ${next.purpose} because it is both safer and likely to earn you more.`;
   }
   if (safer) {
-    return `It beats ${other}, because its chance of default is lower (${risk}). ${next.purpose} would return more (${percent(next.expectedROI, 2)} against ${percent(pick.expectedROI, 2)}), but at your setting ${weights}, so the lower risk wins.`;
+    return `It is ahead of ${next.purpose} because it is safer (${repaying}). ${next.purpose} could earn a little more, but at your risk setting the extra safety is worth more.`;
   }
   if (earnsMore) {
-    return `It beats ${other}, because its expected return is higher (${reward}). ${next.purpose} is safer (${percent(next.pd, 2)} against ${percent(pick.pd, 2)}), but at your setting ${weights}, so the higher return wins.`;
+    return `It is ahead of ${next.purpose} because it could earn you more (${earning}). ${next.purpose} is a little safer, but at your risk setting the extra earnings are worth more.`;
   }
-  return `It is level with ${other}, on both risk and return, and is listed first.`;
+  return `It is level with ${next.purpose} on both safety and earnings.`;
 }
 
-/** Where the pick sits among all open listings. */
-export function comparePick(pick) {
-  const safety =
-    pick.safetyPercentile >= 1
-      ? 'No open listing is safer'
-      : `Safer than ${percent(pick.safetyPercentile, 0)} of open listings`;
-  const reward =
-    pick.roiPercentile >= 1
-      ? 'none has a higher expected return'
-      : `with a higher expected return than ${percent(pick.roiPercentile, 0)} of them`;
-  return `${safety}, ${reward}.`;
-}
-
-/** Says when an allocation was limited by a rule rather than by rank. */
+/** Says when the amount for a borrower was limited by a rule, not by rank. */
 export function allocationNote(pick, amount) {
   const floor = (value) => Math.floor(value / ALLOCATION_STEP) * ALLOCATION_STEP;
   if (pick.allocation === 0) {
-    return `Not funded at this amount: splitting further would put less than ${money(MIN_TICKET)} here.`;
+    return `Not included this time: your amount is too small to share across all five, and we never lend less than ${money(MIN_TICKET)} to one borrower.`;
   }
   if (pick.allocation >= floor(pick.remaining)) {
-    return `This fills the rest of the loan, which needs ${money(pick.remaining)} more.`;
+    return `${money(pick.allocation)} is all this borrower still needs.`;
   }
   if (pick.allocation >= floor(Math.max(MAX_SHARE * amount, MIN_TICKET))) {
-    return `Capped at ${percent(MAX_SHARE, 0)} of your amount, the most any one borrower gets.`;
+    return `We never put more than ${percent(MAX_SHARE, 0)} of your money with one borrower.`;
   }
   return null;
 }
 
 /**
- * The sums behind one borrower's numbers, with every figure filled in, so a
- * lender can redo them on a calculator. `pool` comes from summarizePool().
+ * The sums behind one borrower's numbers, with every figure filled in, so
+ * they can be redone on a calculator. `pool` comes from summarizePool().
  */
 export function calculationSteps(pick, pool, w) {
-  const p = (value) =>
-    value < 0 ? `(−${percent(-value, 2)})` : percent(value, 2);
-  // In running text a negative needs no brackets.
+  // Inside a sum a negative figure goes in brackets; in running text it does not.
+  const p = (value) => (value < 0 ? `(−${percent(-value, 2)})` : percent(value, 2));
   const plain = (value) => (value < 0 ? `−${percent(-value, 2)}` : percent(value, 2));
   const repays = 1 - pick.pd;
   const earned = repays * pick.rate;
@@ -94,29 +73,29 @@ export function calculationSteps(pick, pool, w) {
 
   return [
     {
-      title: 'Expected return',
+      title: 'What you can expect to earn',
       sum: `(${p(repays)} × ${p(pick.rate)}) − (${p(pick.pd)} × ${p(pick.lgd)}) = ${p(earned)} − ${p(lost)}`,
       result: `${p(pick.expectedROI)} a year`,
       basis:
-        'Chance of repaying × interest rate, minus chance of default × the share of the loan lost if that happens.',
+        'The chance they repay × the interest they pay, minus the chance they do not repay × how much of the loan would be lost.',
     },
     {
       title: 'Safety score',
       sum: `100 × (1 − (${p(pick.pd)} − ${p(pool.pdMin)}) ÷ (${p(pool.pdMax)} − ${p(pool.pdMin)}))`,
       result: exactPoints(pick.safety),
-      basis: `Where this chance of default sits between the safest open listing (${plain(pool.pdMin)}) and the riskiest (${plain(pool.pdMax)}).`,
+      basis: `Where this borrower's chance of not repaying (${plain(pick.pd)}) sits between the safest borrower (${plain(pool.pdMin)}) and the riskiest (${plain(pool.pdMax)}).`,
     },
     {
-      title: 'Return score',
+      title: 'Earnings score',
       sum: `100 × (${p(pick.expectedROI)} − ${p(pool.roiMin)}) ÷ (${p(pool.roiMax)} − ${p(pool.roiMin)})`,
       result: exactPoints(pick.returnScore),
-      basis: `Where this expected return sits between the lowest on offer (${plain(pool.roiMin)}) and the highest (${plain(pool.roiMax)}).`,
+      basis: `Where these expected earnings sit between the lowest of any borrower (${plain(pool.roiMin)}) and the highest (${plain(pool.roiMax)}).`,
     },
     {
-      title: 'Suitability score',
+      title: 'Match score',
       sum: `(${percent(1 - w, 0)} × ${exactPoints(pick.safety)}) + (${percent(w, 0)} × ${exactPoints(pick.returnScore)}) = ${exactPoints(pick.safetyPart)} + ${exactPoints(pick.returnPart)}`,
       result: `${exactPoints(pick.fitScore)} out of 100`,
-      basis: `Your risk appetite of ${Math.round(w * 100)} sets the weights: ${percent(1 - w, 0)} safety, ${percent(w, 0)} return.`,
+      basis: `Your risk setting decides how much each score counts: safety ${percent(1 - w, 0)}, earnings ${percent(w, 0)}.`,
     },
   ];
 }
