@@ -1,0 +1,29 @@
+
+.aurora-container {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 20% 30%, #7cff6733, transparent 45%),
+    radial-gradient(ellipse at 75% 30%, #b497cf66, transparent 45%),
+    radial-gradient(ellipse at 50% 85%, #5227ff66, transparent 55%),
+    #100f19;
+}
+
+.aurora-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.aurora-fallback {
+  background:
+    radial-gradient(ellipse at 20% 30%, #7cff6755, transparent 45%),
+    radial-gradient(ellipse at 75% 30%, #b497cf88, transparent 45%),
+    radial-gradient(ellipse at 50% 85%, #5227ff99, transparent 55%),
+    #100f19;
+}

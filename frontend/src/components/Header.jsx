@@ -1,8 +1,17 @@
+
 const PAGES = [
+<<<<<<< HEAD
   ['/', 'Matches'],
   ['/borrowers', 'All borrowers'],
+=======
+  ['/', 'Dashboard'],
+  ['/borrowers', 'Rankings'],
+>>>>>>> c672b1472ee77a1125eb8150d2ae9a719d3369ef
   ['/calculations', 'The maths'],
+  ['/discover', 'Discover'],
+  ['/profile', 'Profile'],
 ];
+
 
 export default function Header({ path }) {
   return (
