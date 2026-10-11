@@ -1,8 +1,12 @@
+
 const PAGES = [
-  ['/', 'Your matches'],
-  ['/borrowers', 'All borrowers'],
+  ['/', 'Dashboard'],
+  ['/borrowers', 'Rankings'],
   ['/calculations', 'The maths'],
+  ['/discover', 'Discover'],
+  ['/profile', 'Profile'],
 ];
+
 
 export default function Header({ path }) {
   return (
