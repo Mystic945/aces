@@ -64,7 +64,7 @@ function LegendItem({ children, label }) {
   );
 }
 
-function ScatterChart({ ranked, profile }) {
+function ScatterChart({ ranked, maxGrade }) {
   const [containerRef, width] = useElementWidth();
   const [activeId, setActiveId] = useState(null);
   const height = Math.round(Math.min(420, Math.max(260, width * 0.5)));
@@ -103,7 +103,7 @@ function ScatterChart({ ranked, profile }) {
   }, [ranked, scale]);
 
   const active = dots.find((dot) => dot.listing.id === activeId);
-  const capPD = riskCapPD(ranked, profile.maxGrade);
+  const capPD = riskCapPD(ranked, maxGrade);
 
   // The pointer only has to be closest to a dot, not on it.
   function handlePointer(event) {
@@ -228,7 +228,7 @@ function ScatterChart({ ranked, profile }) {
                   y={MARGIN.top + 4}
                   className="fill-ink text-[11px] font-bold"
                 >
-                  Above your risk cap
+                  Above your risk limit
                 </text>
               </g>
             )}
@@ -279,10 +279,10 @@ function ScatterChart({ ranked, profile }) {
               {active.listing.purpose}
             </p>
             <p className="label mt-0.5 text-muted">
-              Grade {active.listing.grade} · {active.listing.termMonths} mo ·{' '}
+              Grade {active.listing.grade}, {active.listing.termMonths} months,{' '}
               {active.listing.rank
-                ? `Rank ${active.listing.rank}`
-                : active.listing.exclusion.label}
+                ? `rank ${active.listing.rank}`
+                : active.listing.exclusion.label.toLowerCase()}
             </p>
             <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
               <dt className="text-muted">Expected ROI</dt>
@@ -291,7 +291,7 @@ function ScatterChart({ ranked, profile }) {
               <dd className="text-right font-bold text-ink tabular-nums">{percent(active.listing.pd)}</dd>
               <dt className="text-muted">Rate</dt>
               <dd className="text-right font-bold text-ink tabular-nums">{percent(active.listing.rate)}</dd>
-              <dt className="text-muted">Fit score</dt>
+              <dt className="text-muted">Suitability</dt>
               <dd className="text-right font-bold text-ink tabular-nums">{points(active.listing.fitScore)}</dd>
             </dl>
             {STATUS_TEXT[active.listing.status] && (

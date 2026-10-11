@@ -64,7 +64,7 @@ export function Chip({ active, onClick, children }) {
 }
 
 /**
- * Fit score out of 100 as two stacked segments: how much of it came from
+ * Suitability score out of 100 as two stacked segments: how much of it came from
  * safety and how much from expected return.
  */
 export function FitBar({ safetyPart, returnPart, thin = false }) {
@@ -72,7 +72,7 @@ export function FitBar({ safetyPart, returnPart, thin = false }) {
     <div
       className={`flex w-full overflow-hidden rounded-full bg-fill ${thin ? 'h-1.5' : 'h-2.5'}`}
       role="img"
-      aria-label={`Fit score ${points(safetyPart + returnPart)} of 100: safety ${points(safetyPart)}, return ${points(returnPart)}`}
+      aria-label={`Suitability score ${points(safetyPart + returnPart)} of 100: safety ${points(safetyPart)}, return ${points(returnPart)}`}
     >
       <div
         className="h-full bg-viz-safety transition-[width] duration-200 ease-out"

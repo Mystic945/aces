@@ -65,20 +65,24 @@ test('blended risk never falls as risk appetite rises', () => {
   }
 });
 
-test('the hard cap keeps risky grades away from cautious investors', () => {
+test('low and medium risk appetites never see grades above their limit', () => {
   for (const pick of match(10, 1000).top) assert.match(pick.grade, /[AB]/);
   for (const pick of match(40, 1000).top) assert.match(pick.grade, /[ABC]/);
-  assert.ok(match(10, 1000).ranked.some((l) => l.exclusion?.code === 'risk-cap'));
+  assert.ok(match(10, 1000).ranked.some((l) => l.exclusion?.code === 'risk-limit'));
+  assert.ok(match(10, 1000).counts.aboveRiskLimit > match(40, 1000).counts.aboveRiskLimit);
+  assert.equal(match(90, 1000).counts.aboveRiskLimit, 0);
 });
 
-test('listings without enough funding left are excluded', () => {
+test('loans too small for the amount are set aside', () => {
   for (const amount of [100, 500, 2500, AMOUNT_MAX]) {
     const result = match(60, amount);
     for (const pick of result.top) {
       assert.ok(pick.remaining >= minRoomFor(amount));
     }
   }
-  assert.ok(match(60, 100).eligibleCount > match(60, AMOUNT_MAX).eligibleCount);
+  assert.ok(match(60, 100).counts.ranked > match(60, AMOUNT_MAX).counts.ranked);
+  const { counts } = match(60, AMOUNT_MAX);
+  assert.equal(counts.fetched, counts.aboveRiskLimit + counts.tooSmall + counts.ranked);
 });
 
 test('allocations respect every limit at every setting', () => {

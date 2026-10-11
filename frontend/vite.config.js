@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
         // The dataset lives with the API; the frontend bundles a copy as an
         // offline fallback.
         '@dataset': fileURLToPath(

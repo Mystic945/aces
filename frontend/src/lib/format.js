@@ -10,8 +10,11 @@ export const money = (value) => inr.format(Math.round(value));
 export const percent = (value, digits = 1) =>
   `${(value * 100).toFixed(digits)}%`;
 
-/** Fit scores are 0–1 internally and shown as points out of 100. */
+/** Suitability scores are 0–1 internally and shown as points out of 100. */
 export const points = (value) => Math.round(value * 100);
+
+/** The same score to one decimal place, for showing the arithmetic. */
+export const exactPoints = (value) => (value * 100).toFixed(1);
 
 export function ordinal(n) {
   const tens = n % 100;
@@ -19,8 +22,6 @@ export function ordinal(n) {
   return `${n}${['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
 }
 
-export const pad2 = (n) => String(n).padStart(2, '0');
-
-/** "Borrower · where or what", from whichever fields the listing has. */
+/** "Borrower, where or what", from whichever fields the listing has. */
 export const byline = (listing) =>
-  [listing.borrower, listing.location ?? listing.sector].filter(Boolean).join(' · ');
+  [listing.borrower, listing.location ?? listing.sector].filter(Boolean).join(', ');

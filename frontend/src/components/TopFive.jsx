@@ -1,170 +1,381 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useFlip } from '../hooks/useFlip.js';
-import { comparePick, explainPick } from '../lib/explain.js';
-import { byline, money, percent, points } from '../lib/format.js';
-import { ALLOCATION_STEP, MAX_SHARE, MIN_TICKET, TOP_N } from '../lib/scoring.js';
+import {
+  allocationNote,
+  calculationSteps,
+  comparePick,
+  compareWithNext,
+  explainPick,
+} from '../lib/explain.js';
+import { byline, exactPoints, money, percent, points } from '../lib/format.js';
+import { GRADES, RISK_LEVELS, TOP_N, borrowerRisk } from '../lib/scoring.js';
+import RankedLoanCards from '@/components/ui/ranked-loan-cards';
+import { FlowHeading } from './flow.jsx';
+import PortfolioSummary from './PortfolioSummary.jsx';
 import { FitBar, GradeBadge, Swatch } from './ui.jsx';
 
-function Metric({ label, value }) {
+// The four things the results show for every borrower.
+const FACETS = [
+  { key: 'borrower', title: 'Borrower details', tab: 'Borrower' },
+  { key: 'roi', title: 'Estimated ROI', tab: 'ROI' },
+  { key: 'risk', title: 'Risk level', tab: 'Risk' },
+  { key: 'why', title: 'Why this borrower matches', tab: 'Why' },
+];
+
+/** Label and value rows; rows without a value are left out. */
+function Facts({ rows }) {
   return (
-    <div>
-      <dt className="label text-muted">{label}</dt>
-      <dd className="mt-0.5 text-xl leading-tight font-extrabold tracking-tight text-ink">
-        {value}
-      </dd>
-    </div>
+    <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 text-[13px]">
+      {rows
+        .filter(([, value]) => value !== undefined && value !== null)
+        .map(([label, value]) => (
+          <div key={label} className="contents">
+            <dt className="text-muted">{label}</dt>
+            <dd className="text-right font-bold text-ink tabular-nums">{value}</dd>
+          </div>
+        ))}
+    </dl>
   );
 }
 
-/** Says when an allocation was limited by a rule rather than by rank. */
-function allocationNote(pick, amount) {
-  const floor = (value) => Math.floor(value / ALLOCATION_STEP) * ALLOCATION_STEP;
-  if (pick.allocation === 0) {
-    return `Not funded at this amount: splitting further would put less than ${money(MIN_TICKET)} here.`;
-  }
-  if (pick.allocation >= floor(pick.remaining)) {
-    return `Fills the rest of this loan, which needs ${money(pick.remaining)} more.`;
-  }
-  if (pick.allocation >= floor(Math.max(MAX_SHARE * amount, MIN_TICKET))) {
-    return `Capped at ${percent(MAX_SHARE, 0)} of your investment.`;
-  }
-  return null;
-}
-
-/** The "what to do" panel: how much to lend here and what it should earn. */
-function LendPanel({ pick }) {
-  if (pick.allocation === 0) {
-    return (
-      <div className="flex flex-col justify-center rounded-2xl bg-fill p-4 lg:w-48 lg:shrink-0">
-        <span className="label text-muted">You lend</span>
-        <span className="mt-0.5 text-lg font-extrabold text-muted">Not funded</span>
-      </div>
-    );
-  }
+/** Low, Medium or High as a word plus a three-step meter. */
+function RiskLevel({ grade }) {
+  const level = borrowerRisk(grade);
+  const filled = RISK_LEVELS.indexOf(level) + 1;
   return (
-    <div className="flex items-end justify-between gap-4 rounded-2xl bg-tint p-4 lg:w-48 lg:shrink-0 lg:flex-col lg:items-start lg:justify-center lg:gap-3">
-      <div>
-        <span className="label text-primary-strong">You lend</span>
-        <p className="mt-0.5 text-2xl leading-tight font-extrabold tracking-tight text-ink">
-          {money(pick.allocation)}
-        </p>
-        <p className="text-xs font-semibold text-muted">
-          {percent(pick.share, 0)} of your amount
-        </p>
-      </div>
-      <div className="text-right lg:text-left">
-        <span className="label text-primary-strong">You earn</span>
-        <p className="mt-0.5 text-lg leading-tight font-extrabold tracking-tight text-ink">
-          {money(pick.expectedReturn)}
-          <span className="ml-1 text-xs font-semibold text-muted">/ yr</span>
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function RecommendationCard({ pick, profile, amount, flipRef }) {
-  const funded = pick.allocation > 0;
-  const note = allocationNote(pick, amount);
-
-  return (
-    <li ref={flipRef} className="card">
-      <article className="flex flex-col gap-4 p-5 sm:p-6">
-        <header className="flex flex-wrap items-start gap-x-3 gap-y-2 sm:flex-nowrap sm:gap-x-4">
+    <div className="flex items-center gap-3">
+      <span className="flex gap-1" aria-hidden="true">
+        {RISK_LEVELS.map((step, index) => (
           <span
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg font-extrabold tabular-nums ${funded ? 'bg-primary-strong text-white' : 'bg-fill text-muted'}`}
+            key={step.key}
+            className={`h-6 w-2.5 rounded-full ${index < filled ? 'bg-ink' : 'bg-line'}`}
+          />
+        ))}
+      </span>
+      <span className="text-2xl leading-none font-extrabold tracking-tight text-ink">
+        {level.label}
+      </span>
+    </div>
+  );
+}
+
+/** The arithmetic behind the numbers, written out so it can be redone by hand. */
+function Calculation({ pick, pool, w, level, amount, minRoom }) {
+  return (
+    <div className="px-5 pb-6 sm:px-6">
+      <p className="max-w-[75ch] text-[13px] leading-relaxed text-muted">
+        Every figure comes from listing {pick.id}: interest rate {percent(pick.rate, 2)}, chance of
+        default {percent(pick.pd, 2)}, and {percent(pick.lgd, 2)} of the loan lost if it defaults.
+        Amounts are rounded to two decimals, so your own total may differ in the last digit.
+      </p>
+
+      <ol className="mt-4 grid gap-3 lg:grid-cols-2">
+        {calculationSteps(pick, pool, w).map((step) => (
+          <li key={step.title} className="rounded-2xl bg-fill/70 p-4">
+            <h5 className="text-sm font-extrabold text-ink">{step.title}</h5>
+            <p className="mt-2 text-sm leading-relaxed font-semibold break-words text-body tabular-nums">
+              {step.sum}
+            </p>
+            <p className="mt-1 text-lg leading-tight font-extrabold text-ink tabular-nums">
+              = {step.result}
+            </p>
+            <p className="mt-2 text-[13px] leading-snug text-muted">{step.basis}</p>
+          </li>
+        ))}
+      </ol>
+
+      <ul className="mt-4 grid gap-x-8 gap-y-1.5 text-[13px] leading-relaxed text-body lg:grid-cols-2">
+        <li>
+          Risk check: grade {pick.grade} is within your {level.label.toLowerCase()} limit of grades A
+          to {level.maxGrade}.
+        </li>
+        <li>
+          Size check: {money(pick.remaining)} is still open, and a fifth of {money(amount)} needs{' '}
+          {money(minRoom)}.
+        </li>
+        {pick.allocation > 0 && (
+          <li>
+            Your share: {money(pick.allocation)} is {percent(pick.share, 0)} of {money(amount)}.
+            Ranks 1 to 5 split the amount 5 : 4 : 3 : 2 : 1.
+          </li>
+        )}
+        {pick.allocation > 0 && (
+          <li>
+            Your earnings: {money(pick.allocation)} × {percent(pick.expectedROI, 2)} ={' '}
+            {money(pick.expectedReturn)} a year.
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+function RecommendationCard({ pick, next, result, pool, amount, flipRef }) {
+  const { level, w, counts, minRoom } = result;
+  const [facet, setFacet] = useState('why');
+  const funded = pick.allocation > 0;
+  const best = pick.rank === 1;
+  const note = allocationNote(pick, amount);
+  const panel = (key) =>
+    `${facet === key ? 'block' : 'hidden'} p-5 sm:px-6 lg:block lg:py-5`;
+  const heading = 'mb-3 hidden text-[13px] font-bold text-muted lg:block';
+
+  return (
+    <li ref={flipRef} id={`loan-${pick.id}`} className="card scroll-mt-24 overflow-hidden">
+      <article>
+        <header className="flex flex-wrap items-center gap-x-4 gap-y-3 p-5 sm:flex-nowrap sm:p-6">
+          <span
+            className={`flex size-11 shrink-0 items-center justify-center rounded-xl text-xl font-extrabold tabular-nums ${funded ? 'bg-primary-strong text-white' : 'bg-fill text-muted'}`}
             aria-hidden="true"
           >
             {pick.rank}
           </span>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 basis-48">
             <h3 className="text-lg leading-snug font-extrabold tracking-tight text-ink">
               <span className="sr-only">Rank {pick.rank}: </span>
               {pick.purpose}
             </h3>
-            <p className="mt-0.5 text-sm text-muted">{byline(pick)}</p>
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+              {best && (
+                <span className="rounded-full bg-lime px-2.5 py-0.5 text-xs font-extrabold text-ink">
+                  Best match
+                </span>
+              )}
+              {funded
+                ? `Lend ${money(pick.allocation)}, ${percent(pick.share, 0)} of your amount`
+                : 'Not funded at this amount'}
+            </p>
           </div>
-          <div className="flex basis-full items-center gap-2 pl-[52px] sm:shrink-0 sm:basis-auto sm:pl-0">
-            <GradeBadge grade={pick.grade} />
-            <span className="rounded-full bg-fill px-2.5 py-1 text-xs font-bold whitespace-nowrap text-body">
-              {pick.termMonths} mo
-            </span>
+          <div className="w-full sm:w-56">
+            <div className="mb-1.5 flex items-baseline justify-between gap-3">
+              <span className="text-sm font-extrabold text-ink">
+                Suitability {points(pick.fitScore)}
+                <span className="font-semibold text-muted"> / 100</span>
+              </span>
+              <span className="label flex items-center gap-2.5 text-muted">
+                <span className="inline-flex items-center gap-1">
+                  <Swatch className="bg-viz-safety" />
+                  {points(pick.safetyPart)}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Swatch className="bg-viz-return" />
+                  {points(pick.returnPart)}
+                </span>
+              </span>
+            </div>
+            <FitBar safetyPart={pick.safetyPart} returnPart={pick.returnPart} />
           </div>
         </header>
 
-        {pick.description && (
-          <p className="max-w-[70ch] text-sm leading-relaxed text-body">{pick.description}</p>
-        )}
+        {/* On phones the four facets share one space, picked with tabs. */}
+        <div role="tablist" aria-label="What to show" className="grid grid-cols-4 border-t border-line lg:hidden">
+          {FACETS.map(({ key, title, tab }) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={facet === key}
+              aria-label={title}
+              onClick={() => setFacet(key)}
+              className={`min-h-11 cursor-pointer border-b-2 text-[13px] font-bold transition-colors duration-150 ${
+                facet === key
+                  ? 'border-primary-strong text-primary-strong'
+                  : 'border-transparent text-muted'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
 
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
-          <div className="flex min-w-0 flex-1 flex-col justify-between gap-4">
-            <dl className="grid grid-cols-3 gap-x-4">
-              <Metric label="Interest rate" value={percent(pick.rate)} />
-              <Metric label="Default risk" value={percent(pick.pd)} />
-              <Metric label="Expected ROI" value={percent(pick.expectedROI)} />
-            </dl>
-
-            <div>
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                <span className="text-sm font-extrabold text-ink">
-                  Fit score {points(pick.fitScore)}
-                  <span className="font-semibold text-muted"> / 100</span>
-                </span>
-                <span className="label flex flex-wrap items-center gap-x-4 gap-y-1 text-muted">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Swatch className="bg-viz-safety" />
-                    Safety {points(pick.safetyPart)}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <Swatch className="bg-viz-return" />
-                    Return {points(pick.returnPart)}
-                  </span>
-                </span>
-              </div>
-              <FitBar safetyPart={pick.safetyPart} returnPart={pick.returnPart} />
+        <div className="border-line lg:grid lg:grid-cols-[1fr_1fr_1fr_1.35fr] lg:divide-x lg:divide-line lg:border-t">
+          <section className={panel('borrower')} aria-label="Borrower details">
+            <h4 className={heading}>Borrower details</h4>
+            <p className="text-[15px] leading-snug font-extrabold text-ink">{pick.borrower}</p>
+            <p className="text-[13px] text-muted">{pick.sector ?? pick.location}</p>
+            {pick.description && (
+              <p className="mt-2 text-[13px] leading-relaxed text-body">{pick.description}</p>
+            )}
+            <div className="mt-3">
+              <Facts
+                rows={[
+                  ['Credit score', pick.creditScore],
+                  [
+                    'Past defaults',
+                    pick.priorDefaults === undefined
+                      ? undefined
+                      : pick.priorDefaults === 0
+                        ? 'None'
+                        : pick.priorDefaults,
+                  ],
+                  ['Years in work', pick.employmentYears],
+                  [
+                    'Monthly income',
+                    pick.monthlyIncome === undefined ? undefined : money(pick.monthlyIncome),
+                  ],
+                  ['Asking for', money(pick.amountRequested)],
+                ]}
+              />
             </div>
-          </div>
+          </section>
 
-          <LendPanel pick={pick} />
+          <section className={panel('roi')} aria-label="Estimated ROI">
+            <h4 className={heading}>Estimated ROI</h4>
+            <p className="text-2xl leading-none font-extrabold tracking-tight text-ink">
+              {percent(pick.expectedROI)}
+              <span className="ml-1.5 text-sm font-semibold text-muted">a year</span>
+            </p>
+            <p className="mt-1.5 text-[13px] leading-snug text-body">
+              {funded
+                ? `About ${money(pick.expectedReturn)} a year on the ${money(pick.allocation)} you lend, after allowing for defaults.`
+                : 'After allowing for defaults.'}
+            </p>
+            <div className="mt-3">
+              <Facts
+                rows={[
+                  ['Interest rate', percent(pick.rate)],
+                  ['Loan term', `${pick.termMonths} months`],
+                  [
+                    'If repaid in full',
+                    funded ? `${money(pick.allocation * pick.rate)} a year` : undefined,
+                  ],
+                ]}
+              />
+            </div>
+          </section>
+
+          <section className={panel('risk')} aria-label="Risk level">
+            <h4 className={heading}>Risk level</h4>
+            <RiskLevel grade={pick.grade} />
+            <p className="mt-1.5 text-[13px] leading-snug text-body">
+              {percent(pick.pd)} chance of default in a year.
+            </p>
+            <div className="mt-3">
+              <Facts
+                rows={[
+                  ['Credit grade', <GradeBadge key="grade" grade={pick.grade} size="sm" />],
+                  ['Chance of repaying', percent(1 - pick.pd)],
+                  [
+                    'Debt, share of income',
+                    pick.debtToIncome === undefined ? undefined : percent(pick.debtToIncome, 0),
+                  ],
+                  ['Lost if it defaults', percent(pick.lgd, 0)],
+                ]}
+              />
+            </div>
+          </section>
+
+          <section className={panel('why')} aria-label="Why this borrower matches">
+            <h4 className={heading}>
+              {best ? 'Why this is your best match' : 'Why this borrower matches'}
+            </h4>
+            <p className="text-sm leading-relaxed font-semibold text-ink">
+              {explainPick(pick, level, counts.ranked)}
+            </p>
+            {next && (
+              <p className="mt-2 text-[13px] leading-relaxed text-body">
+                {compareWithNext(pick, next, w)}
+              </p>
+            )}
+            <p className="mt-2 text-[13px] leading-relaxed text-muted">{comparePick(pick)}</p>
+            {note && <p className="mt-2 text-[13px] leading-relaxed text-muted">{note}</p>}
+          </section>
         </div>
 
-        <div className="rounded-2xl bg-fill/70 px-4 py-3">
-          <p className="text-sm leading-relaxed font-semibold text-ink">
-            {explainPick(pick, profile)}
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-muted">{comparePick(pick)}</p>
-          {note && <p className="mt-1 text-xs leading-relaxed text-muted">{note}</p>}
-        </div>
+        <details className="group border-t border-line" open={best}>
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 px-5 text-sm font-bold text-primary-strong sm:px-6 [&::-webkit-details-marker]:hidden">
+            <span>Check the calculation yourself</span>
+            <span className="shrink-0 text-muted group-open:hidden">
+              Show<span className="hidden sm:inline"> the sums behind {exactPoints(pick.fitScore)}</span>
+            </span>
+            <span className="hidden shrink-0 text-muted group-open:inline">Hide</span>
+          </summary>
+          <Calculation
+            pick={pick}
+            pool={pool}
+            w={w}
+            level={level}
+            amount={amount}
+            minRoom={minRoom}
+          />
+        </details>
       </article>
     </li>
   );
 }
 
-export default function TopFive({ result, amount }) {
+/** Scrolls to a loan's detail card and flashes it. */
+function showDetails(id) {
+  const node = document.getElementById(`loan-${id}`);
+  if (!node) return;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  node.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  node.classList.remove('card-flash');
+  void node.offsetWidth;
+  node.classList.add('card-flash');
+}
+
+/** Steps 7 and 8 of the flow: the five picks, then everything about each. */
+export default function TopFive({ result, amount, pool }) {
   const listRef = useRef(null);
   const register = useFlip(listRef);
-  const { top, profile, minRoom, portfolio } = result;
+  const { top, level, minRoom, portfolio, runnerUp } = result;
+  const gradesAllowed =
+    level.maxGrade === GRADES[GRADES.length - 1] ? 'any grade' : `grades A to ${level.maxGrade}`;
 
   if (top.length === 0) {
     return (
-      <div className="card p-6">
-        <p className="text-lg font-extrabold text-ink">No listing fits these settings.</p>
-        <p className="mt-1 text-sm text-muted">
-          Grades A to {profile.maxGrade} with at least {money(minRoom)} left to fund
-          returned nothing. Raise your risk appetite or lower the amount.
-        </p>
-      </div>
+      <>
+        <FlowHeading number={7} title="Select the top 5 recommendations" />
+        <div className="card mt-4 p-6">
+          <p className="text-lg font-extrabold text-ink">No borrower fits these settings.</p>
+          <p className="mt-1 text-sm text-muted">
+            Nothing with {gradesAllowed} has {money(minRoom)} or more still open. Raise your risk
+            appetite or lower the amount.
+          </p>
+        </div>
+      </>
     );
   }
 
   return (
     <>
-      <ol ref={listRef} className="flex flex-col gap-4">
-        {top.map((pick) => (
+      <FlowHeading number={7} title={`Select the top ${top.length} recommendations`}>
+        Pick a card to jump to that borrower's details.
+      </FlowHeading>
+      <RankedLoanCards
+        className="mt-5"
+        loans={top.map((pick) => ({
+          id: pick.id,
+          rank: pick.rank,
+          purpose: pick.purpose,
+          borrower: pick.borrower,
+          sector: pick.sector,
+          grade: pick.grade,
+          creditScore: pick.creditScore,
+          fitScore: pick.fitScore,
+          allocation: pick.allocation,
+          termMonths: pick.termMonths,
+        }))}
+        formatMoney={money}
+        onSelect={showDetails}
+      />
+
+      <FlowHeading number={8} title="Your results">
+        For each borrower: who they are, what you can expect to earn, how risky they are, and why
+        they match. Open the calculation on any card to verify it.
+      </FlowHeading>
+      <div className="mt-5">
+        <PortfolioSummary portfolio={portfolio} />
+      </div>
+      <ol ref={listRef} className="mt-4 flex flex-col gap-4">
+        {top.map((pick, index) => (
           <RecommendationCard
             key={pick.id}
             pick={pick}
-            profile={profile}
+            next={top[index + 1] ?? runnerUp}
+            result={result}
+            pool={pool}
             amount={amount}
             flipRef={register(pick.id)}
           />
@@ -172,8 +383,8 @@ export default function TopFive({ result, amount }) {
       </ol>
       {top.length < TOP_N && (
         <p className="mt-4 rounded-2xl bg-coral/15 px-4 py-3 text-sm leading-relaxed text-ink">
-          Only {top.length} listing{top.length === 1 ? '' : 's'} fit grades A to{' '}
-          {profile.maxGrade} with {money(minRoom)} or more left to fund
+          Only {top.length} {top.length === 1 ? 'borrower fits' : 'borrowers fit'} {gradesAllowed}{' '}
+          with {money(minRoom)} or more still open
           {portfolio.unallocated >= 1 && `, so ${money(portfolio.unallocated)} stays uninvested`}.
           Raise your risk appetite or lower the amount to see more.
         </p>

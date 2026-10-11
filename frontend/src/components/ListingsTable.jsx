@@ -77,7 +77,7 @@ function ListingsTable({ ranked }) {
         className="overflow-x-auto"
         tabIndex={0}
         role="region"
-        aria-label="All open listings, ranked. Scrolls sideways on small screens."
+        aria-label="Every open listing, ranked from best fit to lowest fit. Scrolls sideways on small screens."
       >
         <table className="w-full min-w-[760px] border-collapse">
           <thead>
@@ -91,7 +91,7 @@ function ListingsTable({ ranked }) {
               <th scope="col" className={`${heading} text-right`}>Default risk</th>
               <th scope="col" className={`${heading} text-right`}>Expected ROI</th>
               <th scope="col" className={`${heading} text-right`}>Funding left</th>
-              <th scope="col" className={`${heading} text-left`}>Fit score</th>
+              <th scope="col" className={`${heading} text-left`}>Suitability</th>
               <th scope="col" className={`${heading} pr-4 text-left`}>Status</th>
             </tr>
           </thead>

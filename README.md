@@ -18,32 +18,55 @@ fitScore    = w * normalized(expectedROI) + (1 - w) * safety
 
 | Rule | What it does |
 |---|---|
-| **Risk cap** | Appetite 0–24 sees grades A–B, 25–49 A–C, 50–74 A–D, 75–100 all grades. |
-| **Funding room** | A listing needs at least a fifth of your amount (min ₹25) still unfunded. |
+| **Risk limit** | Low appetite (0–33) sees grades A–B, Medium (34–66) A–C, High (67–100) every grade. Borrowers carry the same Low / Medium / High label. |
+| **Investment fit** | A listing needs at least a fifth of your amount (min ₹25) still unfunded. |
 | **Allocation** | The top 5 share the amount 5 : 4 : 3 : 2 : 1, capped at 40% per borrower and at what each listing still needs. Slices under ₹25 are dropped, so small amounts concentrate and large ones spread out. |
 | **ROI in rupees** | `allocation × expectedROI`, per year. |
 
-Each recommendation shows its rate, default risk, expected ROI, the safety and
-return contributions to its fit score, and one sentence on why it ranked there.
+`fitScore` is shown in the app as the suitability score, out of 100.
+
+The page follows the matchmaker's flow from top to bottom:
+
+1. Set risk appetite (Low / Medium / High, with a slider to fine-tune)
+2. Enter investment amount
+3. Fetch open borrower listings
+4. Evaluate each borrower four ways: repayment likelihood, loan risk, expected
+   return, investment fit
+5. Calculate a suitability score
+6. Rank borrowers, best fit to lowest fit
+7. Select the top 5 recommendations
+8. Show the results: borrower details, estimated ROI, risk level, and why the
+   borrower matches
+
+Every change to either input reruns steps 3 to 8 instantly. Each result says
+why it ranks above the next borrower down, and has a "Check the calculation
+yourself" section that writes out the sums with that listing's own figures, so
+a lender can redo them by hand.
+
 High rates do not win on their own: in the dataset every grade E loan has a
-negative expected ROI, so even the most aggressive setting passes them over.
+negative expected ROI, so even a high risk appetite passes them over.
 
 ## Project layout
 
 ```
 vercel.json                two Vercel services: backend on /api/*, frontend on the rest
 generate_data.py           regenerates the dataset (fixed seed)
-backend/                   Node.js + Express API
+backend/                   Node.js + Express API on MongoDB Atlas
   src/server.js              GET /api/listings, GET /api/health
-  src/listingsStore.js       where listings come from (the dataset file today)
+  src/db.js                  MongoDB connection, shared across requests
+  src/listingsStore.js       reads listings from Atlas, or the dataset file
+  scripts/seed.js            loads the dataset into Atlas
   data/borrower_listings.json  the dataset: 200 open borrower listings
   data/borrower_listings.csv   the same data as CSV
 frontend/                  React + Vite + Tailwind CSS
   src/lib/scoring.js         expected ROI, fit score, ranking, allocation
-  src/lib/explain.js         the plain-language reason on each card
+  src/lib/explain.js         the reasons and the worked sums on each result
   src/lib/normalizeListing.js  maps API columns to the shape the UI uses
   src/lib/scoring.test.js    checks that rankings change sensibly
-  src/components/            sliders, top-5 cards, scatter chart, table
+  src/components/Inputs.jsx  steps 1 and 2: risk appetite and amount
+  src/components/Engine.jsx  steps 3 to 6: fetch, evaluate, score, rank
+  src/components/TopFive.jsx steps 7 and 8: the five picks and their details
+  src/components/            also the scatter chart and the full ranking table
 ```
 
 ## API
@@ -53,6 +76,7 @@ dataset's own column names. Rates and probabilities are percentages.
 
 ```json
 {
+  "source": "mongodb",
   "count": 200,
   "listings": [
     {
@@ -83,7 +107,14 @@ dataset's own column names. Rates and probabilities are percentages.
 }
 ```
 
-`GET /api/health` returns `{ "status": "ok" }`.
+`source` is `mongodb` when the listings came from Atlas and `file` when they
+came from the dataset file.
+
+`GET /api/health` reports whether the database is wired up:
+
+```json
+{ "status": "ok", "database": { "configured": true, "connected": true, "openListings": 200 } }
+```
 
 The frontend reads `loan_id`, `borrower_name`, `business_title`, `category`,
 `description`, `loan_amount`, `funded_amount`, `interest_rate_apr`,
@@ -96,14 +127,41 @@ If the API cannot be reached, or the frontend was built with
 `VITE_USE_API=false`, it uses the copy of the dataset bundled with the app. The
 pill in the header says which source is in use.
 
-### Moving to a database
+## Database (MongoDB Atlas)
 
-[`backend/src/listingsStore.js`](backend/src/listingsStore.js) is the only file
-that knows where listings come from. To serve them from MongoDB Atlas, seed a
-collection from `backend/data/borrower_listings.json`, replace the import in
-that file with a query for documents whose `funding_status` is `open`, and put
-the connection string in `backend/.env` (gitignored) and in the Vercel
-project's environment variables.
+The backend reads listings from MongoDB Atlas when `MONGODB_URI` is set. When
+it is not set, it serves `backend/data/borrower_listings.json` directly, so the
+project still runs without a database.
+
+1. Copy `backend/.env.example` to `backend/.env` and set `MONGODB_URI` to the
+   connection string from Atlas (Database > Connect > Drivers). The file is
+   gitignored; never commit the connection string or put it in the frontend.
+2. `MONGODB_DB` and `MONGODB_COLLECTION` name where the listings live. They
+   default to `lendmatch` and `listings`.
+3. Load the dataset:
+
+   ```bash
+   npm run seed --prefix backend
+   ```
+
+   Listings are matched on `loan_id`, so running it again updates them in
+   place and leaves any other documents alone. Add `-- --reset` to empty the
+   collection first.
+4. Start the backend and open http://localhost:4000/api/health. It should
+   report `"connected": true` and the number of open listings.
+
+On Vercel, add the same variables to the project's Environment Variables, and
+in Atlas allow the deployment to connect under Network Access. Vercel functions
+do not have fixed IP addresses, so that means allowing access from anywhere
+(`0.0.0.0/0`) unless you use the Atlas integration for Vercel.
+
+If the database cannot be reached, `GET /api/listings` answers `503` and the
+frontend falls back to its bundled copy of the dataset.
+
+Some networks have a DNS server that never answers the SRV lookup a
+`mongodb+srv://` connection string needs (the driver reports
+`querySrv ETIMEOUT`). The backend checks for this when it connects and uses
+public DNS (8.8.8.8 and 1.1.1.1) for that lookup instead.
 
 ## Run locally
 
@@ -136,8 +194,8 @@ python generate_data.py
 ## Environment
 
 Copy `frontend/.env.example` to `frontend/.env` and `backend/.env.example` to
-`backend/.env` if you need to change ports, CORS or the API base URL. Real
-`.env` files are gitignored for both.
+`backend/.env` to set the database connection, ports, CORS or the API base
+URL. Real `.env` files are gitignored for both.
 
 ## Deploy
 

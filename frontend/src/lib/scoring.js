@@ -21,18 +21,31 @@ export const AMOUNT_STEP = 50;
 
 export const GRADES = ['A', 'B', 'C', 'D', 'E'];
 
-/** Risk appetite bands and the hard cap on credit grade each one sets. */
-export const RISK_PROFILES = [
-  { upTo: 24, label: 'Conservative', maxGrade: 'B' },
-  { upTo: 49, label: 'Cautious', maxGrade: 'C' },
-  { upTo: 74, label: 'Balanced', maxGrade: 'D' },
-  { upTo: 100, label: 'Aggressive', maxGrade: 'E' },
+/**
+ * The three risk appetites. Each covers a band of the 0 to 100 slider, has a
+ * value the Low / Medium / High buttons jump to, and sets the riskiest credit
+ * grade the investor is shown. Borrowers are rated on the same scale.
+ */
+export const RISK_LEVELS = [
+  { key: 'low', label: 'Low', upTo: 33, preset: 15, maxGrade: 'B' },
+  { key: 'medium', label: 'Medium', upTo: 66, preset: 50, maxGrade: 'C' },
+  { key: 'high', label: 'High', upTo: 100, preset: 85, maxGrade: 'E' },
 ];
 
-export function riskProfile(riskAppetite) {
+/** The investor's risk appetite band for a slider value. */
+export function riskLevel(riskAppetite) {
   return (
-    RISK_PROFILES.find((profile) => riskAppetite <= profile.upTo) ??
-    RISK_PROFILES[RISK_PROFILES.length - 1]
+    RISK_LEVELS.find((level) => riskAppetite <= level.upTo) ??
+    RISK_LEVELS[RISK_LEVELS.length - 1]
+  );
+}
+
+/** A borrower's own risk level: the lowest appetite that would still see them. */
+export function borrowerRisk(grade) {
+  return (
+    RISK_LEVELS.find(
+      (level) => GRADES.indexOf(grade) <= GRADES.indexOf(level.maxGrade),
+    ) ?? RISK_LEVELS[RISK_LEVELS.length - 1]
   );
 }
 
@@ -89,17 +102,34 @@ export function prepareListings(listings) {
   }));
 }
 
+/**
+ * The extremes of the whole pool. The safety and return scores are scaled
+ * between these, so they are what a lender needs to redo the sums by hand.
+ */
+export function summarizePool(prepared) {
+  if (prepared.length === 0) return null;
+  const pds = prepared.map((l) => l.pd);
+  const rois = prepared.map((l) => l.expectedROI);
+  return {
+    count: prepared.length,
+    pdMin: Math.min(...pds),
+    pdMax: Math.max(...pds),
+    roiMin: Math.min(...rois),
+    roiMax: Math.max(...rois),
+  };
+}
+
 /** Smallest funding gap a listing needs for an investment of this size. */
 export function minRoomFor(amount) {
   return Math.max(MIN_TICKET, amount / TOP_N);
 }
 
-function exclusionFor(listing, profile, minRoom) {
-  if (GRADES.indexOf(listing.grade) > GRADES.indexOf(profile.maxGrade)) {
-    return { code: 'risk-cap', label: 'Above your risk cap' };
+function exclusionFor(listing, level, minRoom) {
+  if (GRADES.indexOf(listing.grade) > GRADES.indexOf(level.maxGrade)) {
+    return { code: 'risk-limit', label: 'Above your risk limit' };
   }
   if (listing.remaining < minRoom) {
-    return { code: 'funding', label: 'Not enough funding left' };
+    return { code: 'too-small', label: 'Too small for your amount' };
   }
   return null;
 }
@@ -178,7 +208,7 @@ export function allocate(picks, amount) {
  */
 export function matchListings(prepared, { riskAppetite, amount }) {
   const w = Math.min(100, Math.max(0, riskAppetite)) / 100;
-  const profile = riskProfile(riskAppetite);
+  const level = riskLevel(riskAppetite);
   const minRoom = minRoomFor(amount);
 
   const scored = prepared.map((listing) => {
@@ -189,7 +219,7 @@ export function matchListings(prepared, { riskAppetite, amount }) {
       returnPart,
       safetyPart,
       fitScore: returnPart + safetyPart,
-      exclusion: exclusionFor(listing, profile, minRoom),
+      exclusion: exclusionFor(listing, level, minRoom),
     };
   });
 
@@ -225,15 +255,25 @@ export function matchListings(prepared, { riskAppetite, amount }) {
       ? funded.reduce((sum, pick) => sum + pick.allocation * pick[field], 0) /
         allocated
       : 0;
+  const countExcluded = (code) =>
+    excluded.filter((listing) => listing.exclusion.code === code).length;
 
   return {
     w,
-    profile,
+    level,
     minRoom,
     ranked,
     top,
-    eligibleCount: eligible.length,
-    excludedCount: excluded.length,
+    // The first borrower that just missed the cut, for comparisons.
+    runnerUp: ranked[picks.length]?.status === 'eligible' ? ranked[picks.length] : null,
+    // How many listings each stage of the flow lets through.
+    counts: {
+      fetched: prepared.length,
+      aboveRiskLimit: countExcluded('risk-limit'),
+      tooSmall: countExcluded('too-small'),
+      ranked: eligible.length,
+    },
+    bestROI: eligible.length > 0 ? Math.max(...eligible.map((l) => l.expectedROI)) : null,
     portfolio: {
       amount,
       allocated,

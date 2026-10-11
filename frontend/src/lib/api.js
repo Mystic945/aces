@@ -4,7 +4,8 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 // VITE_USE_API=false builds a frontend that never calls the API and runs on
 // the bundled dataset, for deploying the frontend on its own.
 const USE_API = import.meta.env.VITE_USE_API !== 'false';
-const TIMEOUT_MS = 4000;
+// Long enough for a cold backend to open its database connection.
+const TIMEOUT_MS = 8000;
 
 /** Accepts `{ listings: [...] }` or a bare array of listings. */
 function toListings(body) {
@@ -21,7 +22,9 @@ async function fetchFromApi() {
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (!response.ok) throw new Error(`API responded ${response.status}`);
-  return toListings(await response.json());
+  const body = await response.json();
+  // `origin` is where the API read them from: "mongodb" or "file".
+  return { listings: toListings(body), origin: body?.source };
 }
 
 /**
@@ -32,7 +35,7 @@ async function fetchFromApi() {
 export async function fetchListings() {
   if (USE_API) {
     try {
-      return { source: 'api', listings: await fetchFromApi() };
+      return { source: 'api', ...(await fetchFromApi()) };
     } catch (error) {
       console.warn('Listings API unavailable, using bundled data:', error.message);
     }

@@ -27,6 +27,8 @@ backend/.env.*
 .claude/launch.json
 .superdesign/tmp/
 .superdesign/website/
+.superdesign/init/
+.superdesign/resume.json
 .vite/
 .cache/
 coverage/
