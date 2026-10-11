@@ -201,6 +201,7 @@ npm run install:all
 
 ```bash
 npm run dev:backend
+npm start:backend
 ```
 
 ```bash
