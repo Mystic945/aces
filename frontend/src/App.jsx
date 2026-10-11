@@ -7,19 +7,17 @@ import Apply from './pages/Apply.jsx';
 import Borrowers from './pages/Borrowers.jsx';
 import Calculations from './pages/Calculations.jsx';
 import Matches from './pages/Matches.jsx';
-<<<<<<< HEAD
-import Start from './pages/Start.jsx';
-=======
 import Discover from './pages/Discover.jsx';
 import Profile from './pages/Profile.jsx';
->>>>>>> c672b1472ee77a1125eb8150d2ae9a719d3369ef
+import Start from './pages/Start.jsx';
 
-// Five pages share one set of answers:
+// The pages behind the login share one set of answers:
 //   #/              the two questions and the five matches
 //   #/borrowers     every borrower, ranked
 //   #/calculations  how it is worked out, with the sums
 //   #/start         a new lender's details set the two answers
 //   #/apply         a new borrower applies and joins the listings
+//   #/discover, #/profile
 export default function App() {
   const { status, listings, addListing } = useListings();
   const { path, params } = useHashRoute();
@@ -72,11 +70,14 @@ export default function App() {
         selectedId={params.get('loan')}
       />
     );
-<<<<<<< HEAD
   } else if (path === '/start') {
     page = <Start onProfile={startFromProfile} />;
   } else if (path === '/apply') {
     page = <Apply result={result} amount={amount} onAdded={addListing} />;
+  } else if (path === '/discover') {
+    page = <Discover />;
+  } else if (path === '/profile') {
+    page = <Profile />;
   } else {
     page = (
       <Matches
@@ -87,18 +88,7 @@ export default function App() {
         onDismissWelcome={() => setWelcome(null)}
       />
     );
-=======
-  } else if (path === '/discover') {
-    page = <Discover />;
-  } else if (path === '/profile') {
-    page = <Profile />;
-  } else if (path === '/borrowers') {
-    page = <Borrowers inputs={inputs} result={deferred} />;
-  } else {
-    page = <Matches inputs={inputs} result={deferred} amount={amount} />;
->>>>>>> c672b1472ee77a1125eb8150d2ae9a719d3369ef
   }
-
 
   return (
     <div className="mx-auto w-full max-w-[1100px] px-4 pt-5 pb-32 sm:px-6 sm:pt-7 lg:px-8 lg:pb-16">

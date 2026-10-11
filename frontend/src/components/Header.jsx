@@ -1,17 +1,10 @@
-
 const PAGES = [
-<<<<<<< HEAD
-  ['/', 'Matches'],
-  ['/borrowers', 'All borrowers'],
-=======
   ['/', 'Dashboard'],
   ['/borrowers', 'Rankings'],
->>>>>>> c672b1472ee77a1125eb8150d2ae9a719d3369ef
   ['/calculations', 'The maths'],
   ['/discover', 'Discover'],
   ['/profile', 'Profile'],
 ];
-
 
 export default function Header({ path }) {
   return (
@@ -33,7 +26,7 @@ export default function Header({ path }) {
           <circle cx="25" cy="9" r="3" fill="#B1F349" />
         </svg>
       </a>
-      <nav aria-label="Pages" className="flex items-center gap-0.5 sm:gap-1">
+      <nav aria-label="Pages" className="flex min-w-0 items-center gap-0.5 overflow-x-auto sm:gap-1">
         {PAGES.map(([to, label]) => {
           const current = path === to;
           return (
