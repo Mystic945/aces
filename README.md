@@ -25,6 +25,9 @@ fitScore    = w * normalized(expectedROI) + (1 - w) * safety
 
 `fitScore` is shown in the app as the match score, out of 100.
 
+Every formula, with a worked example for the rank 1 borrower, is on one sheet:
+[`docs/formulas.jpg`](docs/formulas.jpg).
+
 ## The flow
 
 ![From the investor's two inputs to the five recommendations](docs/flowchart.png)
@@ -57,6 +60,7 @@ vercel.json                two Vercel services: backend on /api/*, frontend on t
 package.json               shortcuts: install:all, dev:backend, dev:frontend, test
 generate_data.py           regenerates the dataset (fixed seed)
 docs/flowchart.png         the flow the app follows
+docs/formulas.jpg          every formula on one sheet, with a worked example
 backend/                   Node.js + Express API on MongoDB Atlas
   data/borrower_listings.json  the dataset: 200 open borrower listings
   data/borrower_listings.csv   the same data as CSV
