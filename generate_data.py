@@ -2,9 +2,13 @@ import json
 import csv
 import random
 import math
+import os
 
 # Set fixed seed for reproducibility
 random.seed(42)
+
+# Output folder: the API in backend/ serves the dataset from here
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend", "data")
 
 BUSINESS_TEMPLATES = [
     ("Artisan Bakery", "Bakery & Food", "Purchasing a commercial convection oven to double daily artisan sourdough production."),
@@ -186,12 +190,13 @@ def main():
     listings = generate_listings(200)
 
     # Save to JSON
-    json_path = "borrower_listings.json"
+    os.makedirs(DATA_DIR, exist_ok=True)
+    json_path = os.path.join(DATA_DIR, "borrower_listings.json")
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(listings, f, indent=2)
 
     # Save to CSV
-    csv_path = "borrower_listings.csv"
+    csv_path = os.path.join(DATA_DIR, "borrower_listings.csv")
     fieldnames = list(listings[0].keys())
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)

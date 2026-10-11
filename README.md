@@ -4,8 +4,6 @@ Set a risk appetite and an investment amount; LendMatch instantly ranks the
 open borrower listings from best to worst fit, recommends the top five to fund,
 splits your money across them, and explains every pick.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FMystic945%2Faces)
-
 ## How the matching works
 
 All of this lives in [`frontend/src/lib/scoring.js`](frontend/src/lib/scoring.js)
@@ -33,54 +31,78 @@ negative expected ROI, so even the most aggressive setting passes them over.
 ## Project layout
 
 ```
-borrower_listings.json     the dataset: 200 open borrower listings
-borrower_listings.csv      the same data as CSV
-generate_data.py           regenerates both files (fixed seed)
-api/listings.js            Vercel serverless function: GET /api/listings
-backend/                   Express API (same contract) for local development
+vercel.json                two Vercel services: backend on /api/*, frontend on the rest
+generate_data.py           regenerates the dataset (fixed seed)
+backend/                   Node.js + Express API
   src/server.js              GET /api/listings, GET /api/health
-  src/listingsStore.js       loads and validates the dataset
-  src/normalizeListing.js    maps dataset columns to the API shape
+  src/listingsStore.js       where listings come from (the dataset file today)
+  data/borrower_listings.json  the dataset: 200 open borrower listings
+  data/borrower_listings.csv   the same data as CSV
 frontend/                  React + Vite + Tailwind CSS
   src/lib/scoring.js         expected ROI, fit score, ranking, allocation
   src/lib/explain.js         the plain-language reason on each card
+  src/lib/normalizeListing.js  maps API columns to the shape the UI uses
   src/lib/scoring.test.js    checks that rankings change sensibly
   src/components/            sliders, top-5 cards, scatter chart, table
 ```
 
 ## API
 
-`GET /api/listings` returns the open listings once, on page load. Rates and
-probabilities are decimals (`0.1448` is 14.48%).
+`GET /api/listings` returns the open listings once, on page load, in the
+dataset's own column names. Rates and probabilities are percentages.
 
 ```json
 {
-  "source": "dataset",
   "count": 200,
   "listings": [
     {
-      "id": "LN-1001",
-      "borrower": "Chloe Haddad",
-      "purpose": "Chloe's NextWave Coding Academy",
-      "sector": "Education & EdTech",
+      "loan_id": "LN-1001",
+      "borrower_name": "Chloe Haddad",
+      "business_title": "Chloe's NextWave Coding Academy",
+      "category": "Education & EdTech",
       "description": "Purchasing refurbished high-spec laptops for subsidized vocational bootcamp students.",
-      "amountRequested": 2500,
-      "amountFunded": 0,
-      "rate": 0.1448,
-      "termMonths": 18,
-      "grade": "B",
-      "pd": 0.0408,
-      "lgd": 0.683,
-      "creditScore": 725
+      "loan_amount": 2500,
+      "interest_rate_apr": 14.48,
+      "term_months": 18,
+      "monthly_payment": 155.35,
+      "credit_score": 725,
+      "credit_grade": "B",
+      "repayment_likelihood_pct": 95.92,
+      "default_probability_pct": 4.08,
+      "debt_to_income_ratio": 0.27,
+      "monthly_income": 4191,
+      "employment_history_years": 6.4,
+      "prior_defaults": 0,
+      "loss_given_default_pct": 68.3,
+      "expected_net_roi_pct": 11.1,
+      "funding_status": "open",
+      "funded_amount": 0,
+      "funding_progress_pct": 0.0
     }
   ]
 }
 ```
 
-`GET /api/health` (Express only) returns `{ "status": "ok" }`.
+`GET /api/health` returns `{ "status": "ok" }`.
+
+The frontend reads `loan_id`, `borrower_name`, `business_title`, `category`,
+`description`, `loan_amount`, `funded_amount`, `interest_rate_apr`,
+`term_months`, `credit_grade`, `default_probability_pct`,
+`loss_given_default_pct`, `credit_score` and `funding_status`. It accepts either
+`{ "listings": [...] }` or a bare array, so a backend that returns database
+documents with these fields works without frontend changes.
 
 If the API cannot be reached, the frontend uses the copy of the dataset bundled
 with the app, and the pill in the header says which source is in use.
+
+### Moving to a database
+
+[`backend/src/listingsStore.js`](backend/src/listingsStore.js) is the only file
+that knows where listings come from. To serve them from MongoDB Atlas, seed a
+collection from `backend/data/borrower_listings.json`, replace the import in
+that file with a query for documents whose `funding_status` is `open`, and put
+the connection string in `backend/.env` (gitignored) and in the Vercel
+project's environment variables.
 
 ## Run locally
 
@@ -104,7 +126,7 @@ The app is at http://localhost:5173 and proxies `/api` to the backend on port 40
 npm test
 ```
 
-To regenerate the dataset:
+To regenerate the dataset into `backend/data/`:
 
 ```bash
 python generate_data.py
@@ -118,9 +140,12 @@ Copy `frontend/.env.example` to `frontend/.env` and `backend/.env.example` to
 
 ## Deploy
 
-Import the repository into Vercel with the repository root as the project
-root. [`vercel.json`](vercel.json) builds `frontend/` and Vercel serves
-[`api/listings.js`](api/listings.js) as the API, so no settings need changing.
+The repository deploys to Vercel as one project with two
+[services](https://vercel.com/docs/services), defined in
+[`vercel.json`](vercel.json): the Express app in `backend/` answers `/api/*`
+and the Vite build in `frontend/` answers everything else. Import the
+repository with the repository root as the Root Directory; no build settings
+need changing.
 
 ## Design
 

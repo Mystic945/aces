@@ -19,8 +19,9 @@ app.get('/api/health', (req, res) => {
 // The backend's one job: return the open borrower listings once on page
 // load. All scoring, ranking and allocation happens in the browser.
 app.get('/api/listings', (req, res) => {
-  const { source, listings } = loadListings();
-  res.json({ source, count: listings.length, listings });
+  const listings = loadListings();
+  res.set('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600');
+  res.json({ count: listings.length, listings });
 });
 
 app.use((req, res) => {
@@ -32,6 +33,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message });
 });
 
-app.listen(PORT, () => {
-  console.log(`LendMatch API on http://localhost:${PORT}/api/listings`);
-});
+// On Vercel the platform imports the app and serves it; anywhere else it
+// listens on a port itself.
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`LendMatch API on http://localhost:${PORT}/api/listings`);
+  });
+}
+
+export default app;

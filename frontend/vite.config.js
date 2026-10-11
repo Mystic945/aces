@@ -11,10 +11,11 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        // The dataset and its normaliser live with the API; the frontend
-        // bundles a copy as an offline fallback.
-        '@backend': fileURLToPath(new URL('../backend/src', import.meta.url)),
-        '@dataset': fileURLToPath(new URL('../borrower_listings.json', import.meta.url)),
+        // The dataset lives with the API; the frontend bundles a copy as an
+        // offline fallback.
+        '@dataset': fileURLToPath(
+          new URL('../backend/data/borrower_listings.json', import.meta.url),
+        ),
       },
     },
     server: {

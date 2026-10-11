@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { loadListings } from '../../../backend/src/listingsStore.js';
+import { isOpen, normalizeListing } from './normalizeListing.js';
 import {
   AMOUNT_MAX,
   AMOUNT_MIN,
@@ -13,7 +14,13 @@ import {
   prepareListings,
 } from './scoring.js';
 
-const { listings } = loadListings();
+const rows = JSON.parse(
+  readFileSync(
+    new URL('../../../backend/data/borrower_listings.json', import.meta.url),
+    'utf8',
+  ),
+);
+const listings = rows.filter(isOpen).map(normalizeListing);
 const prepared = prepareListings(listings);
 const match = (riskAppetite, amount) =>
   matchListings(prepared, { riskAppetite, amount });

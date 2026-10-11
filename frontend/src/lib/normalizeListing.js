@@ -1,6 +1,7 @@
-// The API always returns one listing shape. A dataset file may already be in
-// that shape, or use the column names written by generate_data.py
-// (borrower_listings.json), where rates and probabilities are percentages.
+// The API returns listings in the dataset's own column names, as written by
+// generate_data.py and as a database seeded from it would store them (rates
+// and probabilities are percentages). The UI works with one camelCase shape
+// in decimals; a listing that is already in that shape passes through.
 
 const fromPercent = (value) => Number((value / 100).toFixed(4));
 
