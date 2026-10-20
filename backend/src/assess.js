@@ -153,50 +153,31 @@ export function assessBorrower(value, loanId) {
   };
 }
 
-/** Which multiple-choice answer each AI risk level stands for. */
-export const COMFORT_FOR_LEVEL = { Low: 'safe', Medium: 'balanced', High: 'bold' };
-
-/**
- * Checks a new lender's details. `about` is the lender describing their
- * attitude to risk in their own words; with it, the multiple-choice answer
- * becomes optional because the AI model can work it out instead.
- */
+/** Checks a new lender's details. */
 export function validateLender(input = {}) {
   const errors = {};
   const value = {
     ...checkIdentity(input, errors),
     amount: Math.round(number(input.amount)),
     comfort: text(input.comfort, 12),
-    about: text(input.about, 300),
   };
   if (!between(value.amount, LEND_MIN, 10000000)) {
     errors.amount = `Enter how much you want to lend, from ₹${LEND_MIN}.`;
   }
-  if (value.about && value.about.length < 10) {
-    errors.about = 'Write a sentence or two, or leave this empty.';
-  }
-  if (value.comfort && !COMFORT[value.comfort]) value.comfort = '';
-  if (!value.comfort && !value.about) {
-    errors.comfort = 'Tell us in your own words above, or choose the answer closest to how you feel.';
-  }
+  if (!COMFORT[value.comfort]) errors.comfort = 'Choose the answer closest to how you feel.';
   return { ok: Object.keys(errors).length === 0, errors, value };
 }
 
 /**
  * Sets a new lender's starting risk level and amount from their answers, and
- * says why, so the starting point is never a mystery. `ai` is the AI model's
- * reading of what the lender wrote ({ riskLevel, reason, model }); when given
- * it decides the starting level in place of the multiple-choice answer.
+ * says why, so the starting point is never a mystery.
  */
-export function profileLender(value, ai = null) {
+export function profileLender(value) {
   const levels = [15, 50, 85];
   const names = { 15: 'Low', 50: 'Medium', 85: 'High' };
-  const comfort = ai ? COMFORT_FOR_LEVEL[ai.riskLevel] : value.comfort;
-  let riskAppetite = COMFORT[comfort].riskAppetite;
+  let riskAppetite = COMFORT[value.comfort].riskAppetite;
   const reasons = [
-    ai
-      ? `Our AI model (${ai.model}) read what you wrote as ${ai.riskLevel.toLowerCase()} risk: ${ai.reason}`
-      : `You said about a borrower not repaying: "${COMFORT[comfort].label}". That points to ${names[riskAppetite].toLowerCase()} risk.`,
+    `You said about a borrower not repaying: "${COMFORT[value.comfort].label}". That points to ${names[riskAppetite].toLowerCase()} risk.`,
   ];
 
   if (value.amount > value.monthlyIncome * 0.25 && riskAppetite > 15) {
@@ -215,12 +196,5 @@ export function profileLender(value, ai = null) {
     reasons.push(`We match up to ₹${LEND_MAX.toLocaleString('en-IN')} at a time, so we started you there.`);
   }
 
-  return {
-    name: value.name,
-    riskAppetite,
-    riskLevel: names[riskAppetite],
-    amount,
-    reasons,
-    decidedBy: ai ? ai.model : 'answer',
-  };
+  return { name: value.name, riskAppetite, riskLevel: names[riskAppetite], amount, reasons };
 }

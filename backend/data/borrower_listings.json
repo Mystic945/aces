@@ -12,7 +12,6 @@
     "credit_score": 725,
     "credit_grade": "B",
     "repayment_likelihood_pct": 95.92,
-    
     "default_probability_pct": 4.08,
     "debt_to_income_ratio": 0.27,
     "monthly_income": 4191,

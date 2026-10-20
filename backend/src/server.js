@@ -8,7 +8,6 @@ import {
   describeDataSource,
   loadListings,
 } from './listingsStore.js';
-import { MODEL, classifyRiskAppetite } from './riskModel.js';
 
 const PORT = Number(process.env.PORT) || 4000;
 const allowedOrigins = (process.env.CORS_ORIGIN ?? '')
@@ -46,43 +45,15 @@ app.post('/api/listings', async (req, res) => {
 });
 
 // A new lender introduces themselves: check the form and turn their answers
-// into a starting risk level and amount. When they describe their attitude to
-// risk in their own words, the local AI model reads it; if the model is not
-// available, their multiple-choice answer is used instead.
+// into a starting risk level and amount.
 app.post('/api/lenders', async (req, res) => {
   const { ok, errors, value } = validateLender(req.body);
   if (!ok) {
     res.status(400).json({ error: 'Some answers need another look.', fields: errors });
     return;
   }
-  const ai = await classifyRiskAppetite(value.about);
-  if (!ai && !value.comfort) {
-    res.status(400).json({
-      error: 'Some answers need another look.',
-      fields: {
-        comfort: 'Our AI model is not available right now. Choose the answer closest to how you feel.',
-      },
-    });
-    return;
-  }
-  const profile = profileLender(value, ai);
+  const profile = profileLender(value);
   res.status(201).json({ saved: await addLender(value, profile), profile });
-});
-
-// The AI model on its own, for trying it out: { "text": "..." } in,
-// { riskLevel, reason, model } out.
-app.post('/api/risk-appetite', async (req, res) => {
-  const text = String(req.body?.text ?? '').trim().slice(0, 300);
-  if (text.length < 10) {
-    res.status(400).json({ error: 'Send { "text": "..." } with a sentence or two.' });
-    return;
-  }
-  const ai = await classifyRiskAppetite(text);
-  if (!ai) {
-    res.status(503).json({ error: `The AI model (${MODEL}) is not available.` });
-    return;
-  }
-  res.json(ai);
 });
 
 app.use((req, res) => {
