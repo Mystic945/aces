@@ -3,7 +3,15 @@ import { useState } from 'react';
 import { Field, PanNote, SubmitButton } from '../components/form.jsx';
 import { FormError, submitLender } from '../lib/api.js';
 
-const EMPTY = { name: '', pan: '', cibil: '', monthlyIncome: '', amount: '', comfort: '' };
+const EMPTY = {
+  name: '',
+  pan: '',
+  cibil: '',
+  monthlyIncome: '',
+  amount: '',
+  about: '',
+  comfort: '',
+};
 
 /** A new lender tells us about themselves; we set their starting risk and amount. */
 export default function Start({ onProfile }) {
@@ -85,9 +93,21 @@ export default function Start({ onProfile }) {
           </div>
         </div>
 
+        <Field
+          {...field('about')}
+          as="textarea"
+          rows={3}
+          maxLength={300}
+          label="In your own words: what is this money for, and how would you feel about losing some of it?"
+          placeholder="For example: it is my emergency fund, so I want it safe. Or: it is spare cash and I want the best returns."
+          hint="Our AI model reads this and picks your starting risk level. You can skip it and answer the question below instead."
+        />
+
         <fieldset>
           <legend className="text-sm font-bold text-body">
-            If one of your borrowers did not repay, how would you feel?
+            {form.about.trim()
+              ? 'Optional: if one of your borrowers did not repay, how would you feel?'
+              : 'If one of your borrowers did not repay, how would you feel?'}
           </legend>
           <div className="mt-2 grid gap-2 sm:grid-cols-3">
             {Object.entries(COMFORT).map(([key, { label }]) => (
@@ -117,7 +137,10 @@ export default function Start({ onProfile }) {
         </fieldset>
 
         <div>
-          <SubmitButton busy={busy} busyLabel="Finding your matches…">
+          <SubmitButton
+            busy={busy}
+            busyLabel={form.about.trim() ? 'Reading what you wrote…' : 'Finding your matches…'}
+          >
             Show my five borrowers
           </SubmitButton>
         </div>

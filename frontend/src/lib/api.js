@@ -53,12 +53,12 @@ export class FormError extends Error {
   }
 }
 
-async function post(path, data) {
+async function post(path, data, timeout = TIMEOUT_MS) {
   const response = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(data),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeout),
   });
   const body = await response.json().catch(() => ({}));
   if (response.status === 400) throw new FormError(body.error, body.fields);
@@ -88,11 +88,15 @@ export async function submitBorrower(application) {
   return { listing: normalizeListing(listing), saved: 'session' };
 }
 
-/** Sends a new lender's details and gets back their starting settings. */
+/**
+ * Sends a new lender's details and gets back their starting settings. The
+ * API may ask the AI model to read what they wrote, which takes longer the
+ * first time while the model loads.
+ */
 export async function submitLender(details) {
   if (USE_API) {
     try {
-      const { profile } = await post('/api/lenders', details);
+      const { profile } = await post('/api/lenders', details, 45_000);
       return profile;
     } catch (error) {
       if (error instanceof FormError) throw error;
@@ -101,5 +105,11 @@ export async function submitLender(details) {
   }
   const { ok, errors, value } = validateLender(details);
   if (!ok) throw new FormError('Some answers need another look.', errors);
+  // Without the API there is no AI model, so the multiple-choice answer decides.
+  if (!value.comfort) {
+    throw new FormError('Some answers need another look.', {
+      comfort: 'Our AI model is not available right now. Choose the answer closest to how you feel.',
+    });
+  }
   return profileLender(value);
 }

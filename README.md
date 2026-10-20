@@ -159,6 +159,47 @@ documents with these fields works without frontend changes.
 If the API cannot be reached, or the frontend was built with
 `VITE_USE_API=false`, it uses the copy of the dataset bundled with the app.
 
+## AI risk appetite (Qwen 3.5, running locally)
+
+On the New lender page, a lender can describe in their own words what the
+money is for and how they would feel about losing some of it. A local LLM,
+Qwen 3.5 4B served by [Ollama](https://ollama.com), reads it and picks their
+starting risk level (Low, Medium or High) with a one-sentence reason.
+
+- [`backend/src/riskModel.js`](backend/src/riskModel.js) holds the prompt: the
+  three levels defined after risk-tolerance questionnaires such as Grable &
+  Lytton (1999), plus three worked examples. Ollama is asked for JSON only,
+  with thinking off and temperature 0, so the same sentence always gets the
+  same answer.
+- `POST /api/lenders` uses it when the lender writes something;
+  `POST /api/risk-appetite` takes `{ "text": "..." }` and returns
+  `{ riskLevel, reason, model }` for trying the model on its own.
+- When Ollama is not running (on Vercel or Render, for example), the lender's
+  multiple-choice answer is used instead, so the page always works.
+
+**Accuracy.** [`backend/ml/risk_test.jsonl`](backend/ml/risk_test.jsonl) has 60
+labelled sentences (20 per level, including Hindi and Hinglish, none of them
+in the prompt). On it, `qwen3.5:4b` picks the right level for **57 of 60
+(95%)**, at under a second per sentence on an RTX 3050 laptop GPU:
+
+| Right answer | Low | Medium | High |
+|---|---|---|---|
+| Low | 20 | 0 | 0 |
+| Medium | 2 | 18 | 0 |
+| High | 1 | 0 | 19 |
+
+To run it yourself:
+
+```bash
+ollama pull qwen3.5:4b
+```
+
+```bash
+npm run eval:risk --prefix backend
+```
+
+Add `-- --model <name>` to test another Ollama model on the same sentences.
+
 ## Database (MongoDB Atlas)
 
 The backend reads listings from MongoDB Atlas when `MONGODB_URI` is set. When

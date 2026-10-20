@@ -89,6 +89,7 @@ export async function addLender(details, profile) {
     amount_wanted: details.amount,
     comfort: details.comfort,
     risk_appetite: profile.riskAppetite,
+    risk_decided_by: profile.decidedBy,
     amount: profile.amount,
     created_at: new Date().toISOString(),
   };
